@@ -2042,10 +2042,13 @@ function nukiCmd(door, action, label){
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({token:door.webToken, op:'action', smartlockId:door.smartlockId, action})
-    }).then(res=>{
-      if(res.status===204 || res.ok) toast(`🚪 ${label} – über Nuki-Cloud ausgeführt. ✅`);
-      else if(res.status===401 || res.status===403) toast('Nuki Web-API: Token ungültig oder ohne Bedien-Recht.');
-      else toast(`Nuki Web-API-Fehler (HTTP ${res.status}).`);
+    }).then(async res=>{
+      if(res.status===204 || res.ok){ toast(`🚪 ${label} – über Nuki-Cloud ausgeführt. ✅`); return; }
+      let detail = '';
+      try{ const j = await res.json(); detail = j.detailMessage || j.error || ''; }catch(err){}
+      if(res.status===401 || res.status===403) toast('Nuki Web-API: Token ungültig oder ohne Bedien-Recht.');
+      else if(res.status===404) toast('Nuki: Smartlock nicht gefunden – ID prüfen („Schloss suchen").');
+      else toast(`Nuki-Fehler (HTTP ${res.status})${detail ? ': '+detail : ''} – Smartlock-ID am besten über „Schloss suchen" neu setzen.`);
     }).catch(()=> toast('Nuki-Cloud nicht erreichbar – Internetverbindung prüfen.'));
     return;
   }
@@ -2187,6 +2190,10 @@ $('#nukiForm').addEventListener('submit', e=>{
     const smartlockId = $('#nukiSmartlockId').value.trim();
     if(!name || !webToken || !smartlockId){
       err.textContent = 'Bitte Name, Web-API-Token und Smartlock-ID ausfüllen („Schloss suchen" hilft).';
+      err.classList.add('show'); return;
+    }
+    if(!/^\d+$/.test(smartlockId)){
+      err.textContent = 'Die Smartlock-ID muss eine reine Zahl sein – klicke am besten auf „🔍 Schloss suchen".';
       err.classList.add('show'); return;
     }
     err.classList.remove('show');
