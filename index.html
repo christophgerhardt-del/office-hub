@@ -610,15 +610,28 @@ create policy "office_kv_all" on office_kv
       <h3>🚪 Türen (Nuki)</h3>
       <ul class="rows" id="nukiList"></ul>
       <div class="empty" id="nukiEmpty" style="display:none">Noch keine Tür angelegt – unten Bridge-IP, Token und Nuki-ID eintragen.</div>
-      <form id="nukiForm" class="form-row" style="margin-top:12px">
-        <input type="text" id="nukiName" placeholder="Name, z. B. Eingang" autocomplete="off">
-        <input type="text" id="nukiBridge" placeholder="Bridge-IP" autocomplete="off">
-        <input type="password" id="nukiToken" placeholder="API-Token" autocomplete="off">
-        <input type="text" id="nukiIdInp" placeholder="Nuki-ID" autocomplete="off" style="max-width:140px">
-        <button class="btn ghost" type="submit">＋ Tür</button>
+      <form id="nukiForm" style="margin-top:12px">
+        <div class="form-row" style="margin-bottom:8px">
+          <input type="text" id="nukiName" placeholder="Name, z. B. Eingang" autocomplete="off">
+          <select id="nukiMode" style="max-width:220px">
+            <option value="web" selected>☁️ Nuki Web-API (überall)</option>
+            <option value="bridge">🏠 Bridge (nur Büro-WLAN)</option>
+          </select>
+        </div>
+        <div class="form-row" id="nukiBridgeFields" style="margin-bottom:8px; display:none">
+          <input type="text" id="nukiBridge" placeholder="Bridge-IP" autocomplete="off">
+          <input type="password" id="nukiToken" placeholder="Bridge-Token" autocomplete="off">
+          <input type="text" id="nukiIdInp" placeholder="Nuki-ID" autocomplete="off" style="max-width:140px">
+        </div>
+        <div class="form-row" id="nukiWebFields" style="margin-bottom:8px">
+          <input type="password" id="nukiWebToken" class="grow" placeholder="Web-API-Token (von web.nuki.io → API)" autocomplete="off">
+          <button class="btn ghost small" id="nukiFind" type="button">🔍 Schloss suchen</button>
+          <input type="text" id="nukiSmartlockId" placeholder="Smartlock-ID" autocomplete="off" style="max-width:160px">
+        </div>
+        <button class="btn ghost" type="submit">＋ Tür hinzufügen</button>
       </form>
       <div class="err" id="nukiErr"></div>
-      <p class="hint">Nutzt die lokale HTTP-API der Nuki Bridge (in der Nuki-App unter „Bridge-Verwaltung" aktivieren). Tokens werden nur in diesem Browser gespeichert.</p>
+      <p class="hint"><b>Web-API (empfohlen):</b> Auf web.nuki.io unter „API" einen Token erzeugen (Rechte: Smartlock ansehen + bedienen) – funktioniert von überall, auch auf der veröffentlichten Website. „Schloss suchen" findet deine Smartlock-ID automatisch.<br><b>Bridge:</b> lokale HTTP-API der Nuki Bridge (in der Nuki-App aktivieren), nur im Büro-WLAN. Tokens werden im Team geteilt, damit alle die Tür bedienen können.</p>
     </div>
   </section>
 
@@ -693,6 +706,7 @@ const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(3
     state.members = state.people.map(n=>({id:uid(), name:n, role:'member'}));
     ch = true;
   }
+  for(const n of state.nukis){ if(!n.mode){ n.mode = 'bridge'; ch = true; } }
   if(ch) persist();
 })();
 
@@ -1123,7 +1137,8 @@ function renderHome(){
       '💡 ', d.name, d.lastState ? ' aus' : ' an'));
   }
   for(const n of state.nukis){
-    if(n.bridgeIp && n.token && n.nukiId){
+    const ready = n.mode==='web' ? (n.webToken && n.smartlockId) : (n.bridgeIp && n.token && n.nukiId);
+    if(ready){
       qa.append(el('button',{class:'qa-btn', onclick:()=>nukiCmd(n, 3, `${n.name} öffnen`)},'🚪 ', n.name, ' öffnen'));
     }
   }
@@ -2021,6 +2036,19 @@ async function shellyCmd(d, turnOn){
   }
 }
 function nukiCmd(door, action, label){
+  if(door.mode === 'web'){
+    if(!door.webToken || !door.smartlockId){ toast('Web-API-Token oder Smartlock-ID fehlt.'); return; }
+    fetch(`https://api.nuki.io/smartlock/${encodeURIComponent(door.smartlockId)}/action`, {
+      method:'POST',
+      headers:{Authorization:'Bearer '+door.webToken, 'Content-Type':'application/json'},
+      body: JSON.stringify({action})
+    }).then(res=>{
+      if(res.status===204 || res.ok) toast(`🚪 ${label} – über Nuki-Cloud ausgeführt. ✅`);
+      else if(res.status===401 || res.status===403) toast('Nuki Web-API: Token ungültig oder ohne Bedien-Recht.');
+      else toast(`Nuki Web-API-Fehler (HTTP ${res.status}).`);
+    }).catch(()=> toast('Nuki-Cloud nicht erreichbar – Internetverbindung prüfen.'));
+    return;
+  }
   if(!door.bridgeIp || !door.token || !door.nukiId){
     toast('Diese Tür ist unvollständig konfiguriert.');
     return;
@@ -2032,27 +2060,43 @@ function nukiCmd(door, action, label){
     .then(()=>{ clearTimeout(t); toast(`🚪 ${label} – Befehl an Nuki gesendet.`); })
     .catch(()=> toast(`Nuki-Bridge (${door.bridgeIp}) nicht erreichbar – gleiches WLAN?`));
 }
+async function nukiWebLocks(token){
+  const res = await fetch('https://api.nuki.io/smartlock', {headers:{Authorization:'Bearer '+token}});
+  if(res.status===401 || res.status===403) throw new Error('token');
+  if(!res.ok) throw new Error('http'+res.status);
+  return res.json();
+}
 function openNukiEditModal(n){
   const inName = el('input',{type:'text', value:n.name});
-  const inBridge = el('input',{type:'text', value:n.bridgeIp});
-  const inToken = el('input',{type:'password', value:n.token});
-  const inId = el('input',{type:'text', value:n.nukiId});
+  const rows = [el('div',{class:'form-row', style:'margin-bottom:8px'},
+    el('div',{class:'grow'}, el('label',{class:'field-lbl'},'Name'), inName))];
+  let onSave;
+  if(n.mode === 'web'){
+    const inTok = el('input',{type:'password', value:n.webToken||''});
+    const inLock = el('input',{type:'text', value:n.smartlockId||''});
+    rows.push(el('div',{class:'form-row', style:'margin-bottom:12px'},
+      el('div',{class:'grow'}, el('label',{class:'field-lbl'},'Web-API-Token'), inTok),
+      el('div',{}, el('label',{class:'field-lbl'},'Smartlock-ID'), inLock)));
+    onSave = ()=>{ n.webToken = inTok.value.trim(); n.smartlockId = inLock.value.trim(); };
+  }else{
+    const inBridge = el('input',{type:'text', value:n.bridgeIp||''});
+    const inToken = el('input',{type:'password', value:n.token||''});
+    const inId = el('input',{type:'text', value:n.nukiId||''});
+    rows.push(el('div',{class:'form-row', style:'margin-bottom:12px'},
+      el('div',{}, el('label',{class:'field-lbl'},'Bridge-IP'), inBridge),
+      el('div',{}, el('label',{class:'field-lbl'},'Bridge-Token'), inToken),
+      el('div',{}, el('label',{class:'field-lbl'},'Nuki-ID'), inId)));
+    onSave = ()=>{ n.bridgeIp = inBridge.value.trim(); n.token = inToken.value.trim(); n.nukiId = inId.value.trim(); };
+  }
   openModal(
-    modalHead('✏️ Tür bearbeiten'),
+    modalHead('✏️ Tür bearbeiten '+(n.mode==='web'?'(Web-API)':'(Bridge)')),
     el('form',{onsubmit:e=>{
       e.preventDefault();
       n.name = inName.value.trim() || n.name;
-      n.bridgeIp = inBridge.value.trim();
-      n.token = inToken.value.trim();
-      n.nukiId = inId.value.trim();
+      onSave();
       save(); renderAll(); closeModal(); toast('Tür gespeichert.');
     }},
-      el('div',{class:'form-row', style:'margin-bottom:8px'},
-        el('div',{}, el('label',{class:'field-lbl'},'Name'), inName),
-        el('div',{}, el('label',{class:'field-lbl'},'Bridge-IP'), inBridge)),
-      el('div',{class:'form-row', style:'margin-bottom:12px'},
-        el('div',{}, el('label',{class:'field-lbl'},'API-Token'), inToken),
-        el('div',{}, el('label',{class:'field-lbl'},'Nuki-ID'), inId)),
+      ...rows,
       el('button',{class:'btn', type:'submit'},'Speichern')));
 }
 function renderSmart(){
@@ -2080,7 +2124,7 @@ function renderSmart(){
       el('span',{style:'font-size:20px'},'🚪'),
       el('div',{class:'row-main'},
         el('div',{class:'row-title'}, n.name),
-        el('div',{class:'row-meta'}, el('span',{}, 'Bridge '+(n.bridgeIp||'?'))),
+        el('div',{class:'row-meta'}, el('span',{}, n.mode==='web' ? '☁️ Nuki Web-API' : 'Bridge '+(n.bridgeIp||'?'))),
         el('div',{class:'door-row', style:'margin-top:6px'},
           el('button',{class:'door-btn-sm primary', onclick:()=>nukiCmd(n,3,`${n.name} öffnen`)},'🚪 Öffnen'),
           el('button',{class:'door-btn-sm', onclick:()=>nukiCmd(n,1,`${n.name} aufschließen`)},'🔓 Aufschließen'),
@@ -2108,21 +2152,54 @@ $('#shellyForm').addEventListener('submit', e=>{
   renderAll();
   toast(`„${name}“ hinzugefügt – Schalter ausprobieren!`);
 });
+$('#nukiMode').addEventListener('change', ()=>{
+  const web = $('#nukiMode').value === 'web';
+  $('#nukiWebFields').style.display = web ? '' : 'none';
+  $('#nukiBridgeFields').style.display = web ? 'none' : '';
+});
+$('#nukiFind').addEventListener('click', async ()=>{
+  const token = $('#nukiWebToken').value.trim();
+  if(!token){ toast('Bitte zuerst den Web-API-Token eintragen.'); return; }
+  toast('Suche Schlösser…');
+  try{
+    const locks = await nukiWebLocks(token);
+    if(!locks.length){ toast('Keine Smartlocks in diesem Nuki-Konto gefunden.'); return; }
+    $('#nukiSmartlockId').value = locks[0].smartlockId;
+    if(!$('#nukiName').value.trim()) $('#nukiName').value = locks[0].name || 'Tür';
+    toast(`${locks.length === 1 ? 'Ein Schloss' : locks.length + ' Schlösser'} gefunden – „${locks[0].name}“ übernommen. 🔍`);
+  }catch(e){
+    toast(e.message==='token' ? 'Token ungültig oder ohne Leserecht.' : 'Nuki-Cloud nicht erreichbar.');
+  }
+});
 $('#nukiForm').addEventListener('submit', e=>{
   e.preventDefault();
   const err = $('#nukiErr');
   const name = $('#nukiName').value.trim();
-  const bridgeIp = $('#nukiBridge').value.trim();
-  const token = $('#nukiToken').value.trim();
-  const nukiId = $('#nukiIdInp').value.trim();
-  if(!name || !bridgeIp || !token || !nukiId){
-    err.textContent = 'Bitte Name, Bridge-IP, Token und Nuki-ID ausfüllen.';
-    err.classList.add('show'); return;
+  const mode = $('#nukiMode').value;
+  if(mode === 'web'){
+    const webToken = $('#nukiWebToken').value.trim();
+    const smartlockId = $('#nukiSmartlockId').value.trim();
+    if(!name || !webToken || !smartlockId){
+      err.textContent = 'Bitte Name, Web-API-Token und Smartlock-ID ausfüllen („Schloss suchen" hilft).';
+      err.classList.add('show'); return;
+    }
+    err.classList.remove('show');
+    state.nukis.push({id:uid(), name, mode:'web', webToken, smartlockId});
+    $('#nukiWebToken').value=''; $('#nukiSmartlockId').value='';
+  }else{
+    const bridgeIp = $('#nukiBridge').value.trim();
+    const token = $('#nukiToken').value.trim();
+    const nukiId = $('#nukiIdInp').value.trim();
+    if(!name || !bridgeIp || !token || !nukiId){
+      err.textContent = 'Bitte Name, Bridge-IP, Token und Nuki-ID ausfüllen.';
+      err.classList.add('show'); return;
+    }
+    err.classList.remove('show');
+    state.nukis.push({id:uid(), name, mode:'bridge', bridgeIp, token, nukiId});
+    $('#nukiBridge').value=''; $('#nukiToken').value=''; $('#nukiIdInp').value='';
   }
-  err.classList.remove('show');
-  state.nukis.push({id:uid(), name, bridgeIp, token, nukiId});
   save();
-  $('#nukiName').value=''; $('#nukiBridge').value=''; $('#nukiToken').value=''; $('#nukiIdInp').value='';
+  $('#nukiName').value='';
   renderAll();
   toast(`Tür „${name}“ hinzugefügt. 🚪`);
 });
