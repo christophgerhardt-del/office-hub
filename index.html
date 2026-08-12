@@ -1,0 +1,1988 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OfficeHub – Büro organisieren</title>
+<meta name="theme-color" content="#1f4e8c">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="OfficeHub">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗂️</text></svg>">
+<style>
+  :root{
+    --bg:#f4f6fa; --card:#ffffff; --ink:#1c2733; --muted:#64748b;
+    --accent:#1f4e8c; --accent-soft:#e7eef8; --accent-ink:#ffffff;
+    --green:#15803d; --green-soft:#e5f5ec; --red:#b91c1c; --red-soft:#fdecec;
+    --amber:#b45309; --amber-soft:#fdf3e2;
+    --border:#e2e8f0; --track:#cbd5e1;
+    --topbar:linear-gradient(135deg,#1f4e8c 0%,#2c6cb8 100%);
+    --shadow:0 1px 3px rgba(16,32,54,.08),0 4px 14px rgba(16,32,54,.06);
+    --radius:14px;
+  }
+  html[data-theme=dark]{
+    --bg:#0f172a; --card:#1b2740; --ink:#e2e8f0; --muted:#94a3b8;
+    --accent:#5b96e0; --accent-soft:#20345a; --accent-ink:#ffffff;
+    --green:#34c26b; --green-soft:#14301f; --red:#f87171; --red-soft:#3a1a1a;
+    --amber:#fbbf24; --amber-soft:#332708;
+    --border:#2b3a5c; --track:#334155;
+    --topbar:linear-gradient(135deg,#14223c 0%,#1d3355 100%);
+    --shadow:0 1px 3px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.3);
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:var(--bg); color:var(--ink); min-height:100dvh; line-height:1.45;
+    transition:background .2s ease;
+  }
+  button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  input,select{font:inherit;color:inherit}
+  input[type=text],input[type=password],input[type=date],input[type=number],select{
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:9px 12px; width:100%; outline:none;
+  }
+  input:focus,select:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+  ::placeholder{color:#94a3b8}
+
+  /* ---------- Layout ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:20; background:var(--topbar); color:var(--accent-ink);
+    padding:calc(10px + env(safe-area-inset-top)) 16px 10px; display:flex; align-items:center; gap:10px;
+  }
+  .topbar .logo{font-size:20px; font-weight:700; letter-spacing:.2px; display:flex; align-items:center; gap:8px}
+  .topbar .logo span{font-size:22px}
+  nav.desktop{display:flex; gap:2px; margin-left:auto}
+  nav.desktop button{padding:8px 13px; border-radius:10px; color:#cfe0f5; font-weight:600}
+  nav.desktop button.active{background:rgba(255,255,255,.16); color:#fff}
+  nav.desktop button:hover{color:#fff}
+  #themeBtn{font-size:18px; padding:6px 10px; border-radius:10px; margin-left:2px}
+  #themeBtn:hover{background:rgba(255,255,255,.16)}
+  @media(max-width:767px){ #themeBtn{margin-left:auto} }
+
+  main{max-width:960px; margin:0 auto; padding:20px 16px calc(88px + env(safe-area-inset-bottom))}
+  @media(min-width:768px){ main{padding-bottom:40px} }
+
+  .view{display:none}
+  .view.active{display:block; animation:fade .18s ease}
+  @keyframes fade{from{opacity:0; transform:translateY(4px)}to{opacity:1; transform:none}}
+
+  h2{font-size:22px; margin-bottom:4px}
+  .sub{color:var(--muted); font-size:14px; margin-bottom:18px}
+  .card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; margin-bottom:16px}
+  .card h3{font-size:15px; margin-bottom:12px}
+  .hint{font-size:12.5px; color:var(--muted); margin-top:10px; line-height:1.5}
+
+  nav.mobile{
+    position:fixed; bottom:0; left:0; right:0; z-index:20; display:flex;
+    background:var(--card); border-top:1px solid var(--border);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav.mobile button{
+    flex:1; padding:8px 0 6px; display:flex; flex-direction:column; align-items:center; gap:2px;
+    color:var(--muted); font-size:10px; font-weight:600;
+  }
+  nav.mobile button .ico{font-size:19px; line-height:1}
+  nav.mobile button.active{color:var(--accent)}
+  @media(min-width:768px){ nav.mobile{display:none} }
+  @media(max-width:767px){ nav.desktop{display:none} }
+
+  /* ---------- Übersicht ---------- */
+  .stat-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px}
+  .stat{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; text-align:left; transition:transform .12s ease}
+  .stat:hover{transform:translateY(-2px)}
+  .stat .num{font-size:26px; font-weight:700}
+  .stat .lbl{color:var(--muted); font-size:13px; margin-top:2px}
+  .stat .ico{font-size:20px; margin-bottom:6px; display:block}
+  .qa-row{display:flex; gap:8px; flex-wrap:wrap}
+  .qa-btn{
+    display:flex; align-items:center; gap:8px; padding:10px 16px; border-radius:12px;
+    background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:14px;
+    transition:transform .1s ease;
+  }
+  .qa-btn:hover{transform:translateY(-1px)}
+  .qa-btn.on{background:var(--green-soft); color:var(--green)}
+  .sync-dot{display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--track); margin-left:6px; vertical-align:1px}
+  .sync-dot.ok{background:var(--green)}
+  .sync-dot.err{background:var(--red)}
+  pre.sql{
+    background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:12px;
+    font-size:11.5px; overflow-x:auto; user-select:all; line-height:1.5; margin-top:8px;
+  }
+
+  /* ---------- Listen / Zeilen ---------- */
+  ul.rows{list-style:none}
+  ul.rows li{display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--border)}
+  ul.rows li:last-child{border-bottom:none}
+  .row-main{flex:1; min-width:0}
+  .row-title{font-weight:600; overflow-wrap:anywhere}
+  .row-meta{font-size:12.5px; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap; margin-top:1px}
+  .done .row-title{text-decoration:line-through; color:var(--muted); font-weight:500}
+
+  .check{
+    width:24px; height:24px; min-width:24px; border-radius:8px; border:2px solid var(--track);
+    display:flex; align-items:center; justify-content:center; font-size:14px; color:transparent;
+    transition:all .12s ease; background:var(--card);
+  }
+  .check.on{background:var(--green); border-color:var(--green); color:#fff}
+
+  .icon-btn{width:34px; height:34px; min-width:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:16px}
+  .icon-btn:hover{background:var(--red-soft); color:var(--red)}
+  .icon-btn.blue:hover{background:var(--accent-soft); color:var(--accent)}
+
+  .badge{font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:99px; white-space:nowrap}
+  .badge.hoch{background:var(--red-soft); color:var(--red)}
+  .badge.mittel{background:var(--amber-soft); color:var(--amber)}
+  .badge.niedrig{background:var(--accent-soft); color:var(--accent)}
+  .badge.neutral{background:var(--accent-soft); color:var(--accent)}
+  .overdue{color:var(--red); font-weight:700}
+
+  /* ---------- Formulare ---------- */
+  .form-row{display:flex; gap:8px; flex-wrap:wrap}
+  .form-row > *{flex:1; min-width:120px}
+  .form-row .grow{flex:2 1 200px}
+  .btn{background:var(--accent); color:#fff; font-weight:600; border-radius:10px; padding:9px 18px; flex:0 0 auto; min-width:0; transition:filter .12s ease}
+  .btn:hover{filter:brightness(1.1)}
+  .btn.ghost{background:var(--accent-soft); color:var(--accent)}
+  .btn.small{padding:6px 12px; font-size:13.5px}
+  .btn.danger{background:var(--red-soft); color:var(--red)}
+  .field-lbl{font-size:12px; font-weight:600; color:var(--muted); margin-bottom:3px; display:block}
+
+  .filters{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; align-items:center}
+  .chip{padding:6px 13px; border-radius:99px; background:var(--card); border:1px solid var(--border); font-size:13.5px; font-weight:600; color:var(--muted)}
+  .chip.active{background:var(--accent); border-color:var(--accent); color:#fff}
+
+  .empty{color:var(--muted); text-align:center; padding:28px 12px; font-size:14.5px}
+  .empty .big{font-size:34px; display:block; margin-bottom:8px}
+
+  /* ---------- Finanzen ---------- */
+  .people-wrap{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px}
+  .person-chip{display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:99px; background:var(--accent-soft); color:var(--accent); font-weight:600; font-size:13.5px}
+  .person-chip button{color:var(--accent); opacity:.65; font-size:15px; line-height:1}
+  .person-chip button:hover{opacity:1}
+  .part-boxes{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px}
+  .part-boxes label{display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:10px; border:1px solid var(--border); background:var(--card); font-size:13.5px; font-weight:600; cursor:pointer}
+  .part-boxes label.on{border-color:var(--accent); background:var(--accent-soft); color:var(--accent)}
+  .part-boxes input{display:none}
+  .amount-pos{color:var(--green); font-weight:700}
+  .amount-neg{color:var(--red); font-weight:700}
+  .settle{display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; background:var(--green-soft); margin-bottom:8px; font-size:14.5px}
+  .settle b{color:var(--green)}
+  .balance-row{display:flex; justify-content:space-between; padding:8px 4px; border-bottom:1px solid var(--border); font-size:14.5px}
+  .balance-row:last-child{border-bottom:none}
+
+  .err{color:var(--red); font-size:13px; margin-top:6px; display:none}
+  .err.show{display:block}
+
+  /* ---------- Räume ---------- */
+  .date-nav{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .date-nav input[type=date]{flex:1; min-width:150px; max-width:220px}
+  .date-nav .arrow{width:40px; height:40px; border-radius:10px; background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:16px}
+  .room-head{display:flex; align-items:center; gap:10px; margin-bottom:8px}
+  .room-head h3{margin:0; flex:1}
+  .occupancy{position:relative; height:14px; border-radius:7px; background:var(--accent-soft); margin:6px 0 12px; overflow:hidden}
+  .occupancy .block{position:absolute; top:0; bottom:0; background:var(--accent); opacity:.85; border-radius:3px}
+  .occ-scale{display:flex; justify-content:space-between; font-size:10.5px; color:var(--muted); margin-top:-8px; margin-bottom:10px}
+  .desk-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-bottom:12px}
+  .desk{border:1.5px solid var(--border); border-radius:12px; padding:12px; text-align:center}
+  .desk .d-ico{font-size:22px}
+  .desk .d-name{font-weight:700; font-size:13.5px; margin:4px 0 2px}
+  .desk .d-status{font-size:12px; font-weight:600}
+  .desk.free{border-color:var(--green)}
+  .desk.free .d-status{color:var(--green)}
+  .desk.taken{border-color:var(--border); background:var(--bg)}
+  .desk.taken .d-status{color:var(--muted)}
+  .desk .icon-btn{margin:4px auto 0}
+  details.manage{margin-bottom:16px}
+  details.manage summary{cursor:pointer; font-weight:600; color:var(--muted); font-size:14px; padding:4px 2px}
+  details.manage .card{margin-top:10px}
+  details.sub-details{margin-top:10px}
+  details.sub-details summary{cursor:pointer; font-size:13px; font-weight:600; color:var(--muted)}
+
+  /* Wochenansicht */
+  .wk-wrap{overflow-x:auto}
+  table.wk{border-collapse:collapse; width:100%; min-width:720px; font-size:12.5px}
+  table.wk th, table.wk td{border:1px solid var(--border); padding:6px 7px; text-align:left; vertical-align:top}
+  table.wk th{background:var(--accent-soft); color:var(--accent); font-size:12px; white-space:nowrap}
+  table.wk th.today{background:var(--accent); color:#fff}
+  table.wk td{min-width:88px; cursor:pointer; height:44px}
+  table.wk td:hover{background:var(--accent-soft)}
+  table.wk td .wk-b{background:var(--accent-soft); color:var(--accent); border-radius:6px; padding:1px 5px; margin-bottom:3px; font-weight:600; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px}
+  table.wk td.roomcol{font-weight:700; cursor:default; white-space:nowrap}
+  table.wk td.roomcol:hover{background:none}
+
+  /* ---------- Lageplan ---------- */
+  .floorplan{
+    position:relative; width:100%; aspect-ratio:5/3; border-radius:12px;
+    border:1.5px solid var(--border); overflow:hidden; background:var(--bg);
+    background-image:
+      linear-gradient(var(--accent-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--accent-soft) 1px, transparent 1px);
+    background-size:5% 8.333%;
+  }
+  .floorplan.hasbg{background-size:cover; background-position:center}
+  .plan-el{
+    position:absolute; border-radius:10px; padding:2px 4px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+    font-size:11.5px; font-weight:700; text-align:center; line-height:1.2;
+    user-select:none; -webkit-user-select:none; touch-action:none; cursor:pointer;
+    overflow:hidden; transition:box-shadow .12s ease;
+  }
+  .plan-el:hover{box-shadow:0 3px 10px rgba(16,32,54,.25); z-index:5}
+  .plan-el .pe-ico{font-size:15px; line-height:1}
+  .plan-el .pe-sub{font-size:9.5px; font-weight:600; opacity:.8}
+  .plan-el.room{background:var(--accent-soft); border:1.5px solid var(--accent); color:var(--accent)}
+  .floorplan.hasbg .plan-el.room{background:color-mix(in srgb, var(--accent-soft) 82%, transparent)}
+  .plan-el.desk{background:var(--green-soft); border:1.5px solid var(--green); color:var(--green)}
+  .plan-el.desk.taken{background:var(--card); border-color:var(--track); color:var(--muted)}
+  .floorplan.edit .plan-el{cursor:move; border-style:dashed}
+  .rs-handle{
+    position:absolute; right:0; bottom:0; width:16px; height:16px;
+    border-radius:8px 0 8px 0; background:var(--accent); cursor:nwse-resize; display:none;
+    touch-action:none;
+  }
+  .floorplan.edit .plan-el.room .rs-handle{display:block}
+  @media(max-width:767px){
+    .plan-el{font-size:9px; border-radius:7px}
+    .plan-el .pe-ico{font-size:12px}
+    .plan-el .pe-sub{font-size:8px}
+  }
+  .plan-legend{display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; font-size:12px; color:var(--muted); font-weight:600}
+  .plan-legend .dot{display:inline-block; width:11px; height:11px; border-radius:4px; margin-right:5px; vertical-align:-1px}
+
+  /* ---------- Mini-Modal ---------- */
+  #modalBack{position:fixed; inset:0; background:rgba(8,16,30,.5); z-index:60; display:none}
+  #modalBack.show{display:block}
+  #miniModal{
+    position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:61;
+    width:min(440px, 92vw); max-height:82vh; overflow:auto; display:none; margin-bottom:0;
+  }
+  #miniModal.show{display:block}
+  #miniModal h3{display:flex; align-items:center; gap:8px}
+  #miniModal .close-x{margin-left:auto; font-size:18px; color:var(--muted); padding:2px 8px; border-radius:8px}
+  #miniModal .close-x:hover{background:var(--red-soft); color:var(--red)}
+
+  /* ---------- Smart Office ---------- */
+  .switch{width:52px; height:30px; min-width:52px; border-radius:99px; background:var(--track); position:relative; transition:background .15s ease}
+  .switch::after{content:''; position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:50%; background:#fff; transition:left .15s ease; box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  .switch.on{background:var(--green)}
+  .switch.on::after{left:25px}
+  .door-row{display:flex; gap:6px; flex-wrap:wrap}
+  .door-btn-sm{padding:7px 12px; border-radius:10px; background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:13px}
+  .door-btn-sm.primary{background:var(--green-soft); color:var(--green)}
+  .door-btn-sm:hover{filter:brightness(1.05)}
+
+  /* ---------- Toast & Konfetti ---------- */
+  #toast{
+    position:fixed; left:50%; transform:translateX(-50%) translateY(20px);
+    bottom:calc(76px + env(safe-area-inset-bottom)); z-index:70;
+    background:#1c2733; color:#fff; border-radius:12px; padding:11px 16px;
+    display:flex; align-items:center; gap:14px; font-size:14px; box-shadow:0 8px 24px rgba(0,0,0,.25);
+    opacity:0; pointer-events:none; transition:all .2s ease; max-width:92vw;
+  }
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto}
+  #toast button{color:#7fb2f0; font-weight:700}
+  @media(min-width:768px){ #toast{bottom:24px} }
+  .confetti-piece{position:fixed; top:-30px; z-index:99; font-size:22px; pointer-events:none; animation:confetti-fall linear forwards}
+  @keyframes confetti-fall{to{transform:translateY(112vh) rotate(720deg)}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo"><span>🗂️</span> OfficeHub</div>
+  <nav class="desktop" id="navDesktop"></nav>
+  <button id="themeBtn" aria-label="Dunkelmodus umschalten">🌙</button>
+</header>
+
+<main>
+
+  <!-- ===== Übersicht ===== -->
+  <section class="view" id="view-home">
+    <h2 id="homeGreeting">Übersicht</h2>
+    <p class="sub">Hier ist der Stand im Büro.</p>
+    <div class="stat-grid">
+      <button class="stat" data-goto="tasks"><span class="ico">✅</span><div class="num" id="statTasks">0</div><div class="lbl">Offene Aufgaben</div></button>
+      <button class="stat" data-goto="shopping"><span class="ico">🛒</span><div class="num" id="statShopping">0</div><div class="lbl">Offene Einkäufe</div></button>
+      <button class="stat" data-goto="money"><span class="ico">💶</span><div class="num" id="statMoney">0,00 €</div><div class="lbl">Offene Ausgleichszahlungen</div></button>
+      <button class="stat" data-goto="rooms"><span class="ico">📅</span><div class="num" id="statRooms">0</div><div class="lbl">Buchungen heute</div></button>
+    </div>
+
+    <div class="card" id="quickCard" style="display:none">
+      <h3>Schnellzugriff</h3>
+      <div class="qa-row" id="quickActions"></div>
+    </div>
+
+    <div class="card">
+      <h3>Als Nächstes fällig</h3>
+      <ul class="rows" id="homeNextList"></ul>
+      <div class="empty" id="homeNextEmpty" style="display:none"><span class="big">🎉</span>Keine offenen Aufgaben – alles erledigt!</div>
+    </div>
+
+    <div class="card">
+      <h3>🔄 Team-Sync <span class="sync-dot" id="syncDot"></span></h3>
+      <p class="sub" id="syncStatus" style="margin-bottom:10px">Aus – Daten bleiben nur in diesem Browser.</p>
+      <div class="form-row" style="margin-bottom:8px">
+        <div class="grow"><label class="field-lbl" for="syncUrl">Supabase-URL</label>
+          <input type="text" id="syncUrl" placeholder="https://xxxx.supabase.co" autocomplete="off"></div>
+        <div><label class="field-lbl" for="syncKey">Anon-Key</label>
+          <input type="password" id="syncKey" placeholder="eyJ…" autocomplete="off"></div>
+      </div>
+      <div class="form-row">
+        <div class="grow"><label class="field-lbl" for="syncOffice">Büro-Code (geheim, mit dem Team teilen)</label>
+          <input type="text" id="syncOffice" placeholder="Code erzeugen oder einfügen" autocomplete="off"></div>
+        <button class="btn ghost small" id="syncGenCode" type="button" style="align-self:flex-end">🎲 Code erzeugen</button>
+        <button class="btn small" id="syncToggle" type="button" style="align-self:flex-end">▶️ Aktivieren</button>
+      </div>
+      <details class="sub-details">
+        <summary>Einmalige Einrichtung (Supabase-Projekt)</summary>
+        <p class="hint">1. Auf supabase.com ein (kostenloses) Projekt anlegen. 2. Im SQL-Editor dieses Setup ausführen. 3. Projekt-URL + Anon-Key oben eintragen, Code erzeugen, aktivieren. Alle Geräte mit gleicher URL + gleichem Büro-Code teilen dann live Aufgaben, Listen, Buchungen &amp; Co.</p>
+        <pre class="sql">create table if not exists office_kv (
+  office_id uuid not null,
+  key text not null,
+  value jsonb,
+  updated_at timestamptz default now(),
+  primary key (office_id, key)
+);
+alter table office_kv enable row level security;
+create policy "office_kv_all" on office_kv
+  for all using (true) with check (true);</pre>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3>Daten</h3>
+      <div class="form-row">
+        <button class="btn ghost small" id="exportBtn">⬇ Backup exportieren</button>
+        <button class="btn ghost small" id="importBtn">⬆ Backup importieren</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json" style="display:none">
+      <p class="hint">Ohne Team-Sync liegen alle Daten lokal in diesem Browser. Mit dem Backup nimmst du sie auf ein anderes Gerät mit.</p>
+    </div>
+  </section>
+
+  <!-- ===== Aufgaben ===== -->
+  <section class="view" id="view-tasks">
+    <h2>Aufgaben</h2>
+    <p class="sub">Das Office im Griff – wer macht was bis wann.</p>
+
+    <div class="card">
+      <h3>Neue Aufgabe</h3>
+      <form id="taskForm">
+        <div class="form-row" style="margin-bottom:8px">
+          <div class="grow"><label class="field-lbl" for="taskTitle">Aufgabe</label>
+            <input type="text" id="taskTitle" placeholder="z. B. Druckerpapier bestellen" autocomplete="off"></div>
+        </div>
+        <div class="form-row">
+          <div><label class="field-lbl" for="taskAssignee">Zuständig</label>
+            <input type="text" id="taskAssignee" placeholder="Name (optional)" autocomplete="off"></div>
+          <div><label class="field-lbl" for="taskDue">Fällig am</label>
+            <input type="date" id="taskDue"></div>
+          <div><label class="field-lbl" for="taskPrio">Priorität</label>
+            <select id="taskPrio">
+              <option value="niedrig">Niedrig</option>
+              <option value="mittel" selected>Mittel</option>
+              <option value="hoch">Hoch</option>
+            </select></div>
+          <div><label class="field-lbl" for="taskRepeat">Wiederholung</label>
+            <select id="taskRepeat">
+              <option value="nie" selected>Nie</option>
+              <option value="taeglich">Täglich</option>
+              <option value="woechentlich">Wöchentlich</option>
+              <option value="monatlich">Monatlich</option>
+            </select></div>
+          <button class="btn" type="submit" style="align-self:flex-end">＋ Hinzufügen</button>
+        </div>
+        <div class="err" id="taskErr">Bitte einen Aufgabentitel eingeben.</div>
+      </form>
+    </div>
+
+    <div class="filters" id="taskFilters">
+      <button class="chip active" data-f="offen">Offen</button>
+      <button class="chip" data-f="erledigt">Erledigt</button>
+      <button class="chip" data-f="alle">Alle</button>
+    </div>
+
+    <div class="card">
+      <ul class="rows" id="taskList"></ul>
+      <div class="empty" id="taskEmpty" style="display:none"><span class="big">📭</span>Keine Aufgaben in dieser Ansicht.</div>
+    </div>
+  </section>
+
+  <!-- ===== Einkauf ===== -->
+  <section class="view" id="view-shopping">
+    <h2>Einkaufslisten</h2>
+    <p class="sub">Gemeinsame Listen fürs Büro – einfach abhaken.</p>
+
+    <div class="filters" id="listChips"></div>
+
+    <div class="card">
+      <form id="listForm" class="form-row">
+        <input type="text" id="listName" class="grow" placeholder="Neue Liste, z. B. Büromaterial" autocomplete="off">
+        <button class="btn ghost" type="submit">＋ Liste anlegen</button>
+      </form>
+      <div class="err" id="listErr">Bitte einen Listennamen eingeben.</div>
+    </div>
+
+    <div class="card" id="itemCard">
+      <h3 id="itemCardTitle">Artikel</h3>
+      <form id="itemForm" class="form-row" style="margin-bottom:10px">
+        <input type="text" id="itemName" class="grow" placeholder="Artikel, z. B. Kaffee" autocomplete="off" list="itemSugg">
+        <datalist id="itemSugg"></datalist>
+        <input type="text" id="itemQty" placeholder="Menge (optional)" autocomplete="off" style="max-width:150px">
+        <button class="btn" type="submit">＋</button>
+      </form>
+      <div class="err" id="itemErr">Bitte einen Artikelnamen eingeben.</div>
+      <ul class="rows" id="itemList"></ul>
+      <div class="empty" id="itemEmpty" style="display:none"><span class="big">🛒</span>Diese Liste ist noch leer.</div>
+      <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap">
+        <button class="btn ghost small" id="clearChecked">Abgehakte entfernen</button>
+        <button class="btn small danger" id="deleteList">Liste löschen</button>
+      </div>
+    </div>
+    <div class="empty" id="noListEmpty" style="display:none"><span class="big">📝</span>Lege oben deine erste Einkaufsliste an.</div>
+  </section>
+
+  <!-- ===== Finanzen ===== -->
+  <section class="view" id="view-money">
+    <h2>Rechnungen aufteilen</h2>
+    <p class="sub">Wer hat was bezahlt – und wer schuldet wem wie viel.</p>
+
+    <div class="card">
+      <h3>Personen</h3>
+      <div class="people-wrap" id="peopleWrap"></div>
+      <form id="personForm" class="form-row">
+        <input type="text" id="personName" class="grow" placeholder="Name, z. B. Anna" autocomplete="off">
+        <button class="btn ghost" type="submit">＋ Person</button>
+      </form>
+      <div class="err" id="personErr"></div>
+    </div>
+
+    <div class="card">
+      <h3>Neue Ausgabe</h3>
+      <form id="expenseForm">
+        <div class="form-row" style="margin-bottom:8px">
+          <div class="grow"><label class="field-lbl" for="expDesc">Beschreibung</label>
+            <input type="text" id="expDesc" placeholder="z. B. Team-Mittagessen" autocomplete="off"></div>
+          <div><label class="field-lbl" for="expAmount">Betrag (€)</label>
+            <input type="text" id="expAmount" inputmode="decimal" placeholder="z. B. 42,50" autocomplete="off"></div>
+          <div><label class="field-lbl" for="expPayer">Bezahlt von</label>
+            <select id="expPayer"></select></div>
+          <div><label class="field-lbl" for="expDate">Datum</label>
+            <input type="date" id="expDate"></div>
+        </div>
+        <label class="field-lbl">Aufteilen auf</label>
+        <div class="part-boxes" id="partBoxes"></div>
+        <div class="err" id="expErr"></div>
+        <button class="btn" type="submit" style="margin-top:12px">＋ Ausgabe hinzufügen</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Kontostand</h3>
+      <div id="balances"></div>
+      <div class="empty" id="balEmpty" style="display:none"><span class="big">⚖️</span>Noch keine Ausgaben erfasst.</div>
+    </div>
+
+    <div class="card" id="settleCard" style="display:none">
+      <h3>Ausgleich – so seid ihr quitt</h3>
+      <div id="settlements"></div>
+      <button class="btn small" id="settleAll" style="margin-top:6px">✅ Quitt stellen – Runde archivieren</button>
+      <p class="hint">„Quitt stellen" heißt: Die Zahlungen oben wurden geleistet. Alle Ausgaben wandern ins Archiv, der Kontostand beginnt bei 0.</p>
+    </div>
+
+    <div class="card">
+      <h3>Alle Ausgaben</h3>
+      <ul class="rows" id="expenseList"></ul>
+      <div class="empty" id="expEmpty" style="display:none"><span class="big">🧾</span>Noch keine Ausgaben.</div>
+    </div>
+
+    <details class="manage" id="settledDetails" style="display:none">
+      <summary>🗂️ Archiv – quittgestellte Runden</summary>
+      <div class="card"><ul class="rows" id="settledList"></ul></div>
+    </details>
+  </section>
+
+  <!-- ===== Räume & Arbeitsplätze ===== -->
+  <section class="view" id="view-rooms">
+    <h2>Räume &amp; Arbeitsplätze</h2>
+    <p class="sub">Meetingräume und Schreibtische buchen – ohne Doppelbelegung.</p>
+
+    <div class="card">
+      <div class="date-nav">
+        <button class="arrow" id="dayPrev" aria-label="Vorheriger Tag">◀</button>
+        <input type="date" id="bookDate">
+        <button class="arrow" id="dayNext" aria-label="Nächster Tag">▶</button>
+        <button class="btn ghost small" id="dayToday">Heute</button>
+        <span class="badge neutral" id="bookDateLabel"></span>
+        <span style="flex:1"></span>
+        <button class="chip active" id="modeDay">Tag</button>
+        <button class="chip" id="modeWeek">Woche</button>
+      </div>
+    </div>
+
+    <div class="filters" id="floorChips"></div>
+
+    <div class="card" id="planCard">
+      <div class="room-head">
+        <h3>🗺️ Lageplan</h3>
+        <button class="btn ghost small" id="planEditBtn">✏️ Anordnen</button>
+      </div>
+      <div class="floorplan" id="floorplan"></div>
+      <div class="plan-legend">
+        <span><span class="dot" style="background:var(--green)"></span>Platz frei</span>
+        <span><span class="dot" style="background:var(--track)"></span>Platz belegt</span>
+        <span><span class="dot" style="background:var(--accent)"></span>Meetingraum</span>
+      </div>
+      <p class="hint" id="planHint">Klicke im Plan auf einen Platz oder Raum, um direkt zu buchen. Mit „Anordnen" ziehst du alles an seinen echten Platz im Büro – Räume lassen sich unten rechts größer ziehen. Über „⚙️ Etagen" legst du weitere Etagen an und hinterlegst ein Grundriss-Foto.</p>
+    </div>
+
+    <div class="card" id="weekCard" style="display:none">
+      <h3 id="weekTitle">📅 Wochenübersicht</h3>
+      <div class="wk-wrap"><table class="wk" id="weekTable"></table></div>
+      <p class="hint">Klicke auf eine Zelle, um zu diesem Tag zu springen und zu buchen.</p>
+    </div>
+
+    <div id="meetingRooms"></div>
+
+    <div class="card" id="deskCard">
+      <h3>🖥️ Arbeitsplätze</h3>
+      <div class="desk-grid" id="deskGrid"></div>
+      <div class="empty" id="deskEmpty" style="display:none">Auf dieser Etage gibt es noch keine Arbeitsplätze – unten unter „Ressourcen verwalten".</div>
+      <form id="deskForm" class="form-row">
+        <select id="deskSelect"></select>
+        <input type="text" id="deskPerson" placeholder="Wer sitzt dort?" autocomplete="off">
+        <button class="btn" type="submit">Platz buchen</button>
+      </form>
+    </div>
+
+    <details class="manage">
+      <summary>⚙️ Ressourcen verwalten (Räume &amp; Plätze anlegen)</summary>
+      <div class="card">
+        <form id="resForm" class="form-row" style="margin-bottom:12px">
+          <input type="text" id="resName" class="grow" placeholder="Name, z. B. Meetingraum Süd" autocomplete="off">
+          <select id="resType" style="max-width:170px">
+            <option value="meeting">Meetingraum</option>
+            <option value="desk">Arbeitsplatz</option>
+          </select>
+          <input type="number" id="resCap" placeholder="Plätze" min="1" max="99" style="max-width:100px">
+          <button class="btn ghost" type="submit">＋ Anlegen</button>
+        </form>
+        <p class="hint" style="margin:0 0 8px">Neue Ressourcen landen auf der gerade gewählten Etage. Umbenennen und Etage wechseln über den ✏️-Stift.</p>
+        <ul class="rows" id="resList"></ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ===== Smart Office ===== -->
+  <section class="view" id="view-smart">
+    <h2>Smart Office</h2>
+    <p class="sub">Licht und Türen direkt aus der App steuern – lokal im Büro-WLAN.</p>
+
+    <div class="card">
+      <h3>💡 Beleuchtung (Shelly)</h3>
+      <ul class="rows" id="shellyList"></ul>
+      <div class="empty" id="shellyEmpty" style="display:none">Noch keine Shelly-Geräte – unten die IP-Adresse aus der Shelly-App eintragen.</div>
+      <form id="shellyForm" class="form-row" style="margin-top:12px">
+        <input type="text" id="shellyName" placeholder="Name, z. B. Deckenlicht" autocomplete="off">
+        <input type="text" id="shellyIp" placeholder="IP, z. B. 192.168.1.50" autocomplete="off">
+        <select id="shellyGen" style="max-width:170px">
+          <option value="gen2">Shelly Plus / Pro (Gen 2+)</option>
+          <option value="gen1">Shelly Gen 1</option>
+        </select>
+        <button class="btn ghost" type="submit">＋ Gerät</button>
+      </form>
+      <div class="err" id="shellyErr"></div>
+      <p class="hint">Die App schickt Schaltbefehle direkt an die Geräte-IP. Funktioniert, wenn Handy/Rechner im selben WLAN wie die Shellys sind.</p>
+    </div>
+
+    <div class="card">
+      <h3>🚪 Türen (Nuki)</h3>
+      <ul class="rows" id="nukiList"></ul>
+      <div class="empty" id="nukiEmpty" style="display:none">Noch keine Tür angelegt – unten Bridge-IP, Token und Nuki-ID eintragen.</div>
+      <form id="nukiForm" class="form-row" style="margin-top:12px">
+        <input type="text" id="nukiName" placeholder="Name, z. B. Eingang" autocomplete="off">
+        <input type="text" id="nukiBridge" placeholder="Bridge-IP" autocomplete="off">
+        <input type="password" id="nukiToken" placeholder="API-Token" autocomplete="off">
+        <input type="text" id="nukiIdInp" placeholder="Nuki-ID" autocomplete="off" style="max-width:140px">
+        <button class="btn ghost" type="submit">＋ Tür</button>
+      </form>
+      <div class="err" id="nukiErr"></div>
+      <p class="hint">Nutzt die lokale HTTP-API der Nuki Bridge (in der Nuki-App unter „Bridge-Verwaltung" aktivieren). Tokens werden nur in diesem Browser gespeichert.</p>
+    </div>
+  </section>
+
+</main>
+
+<nav class="mobile" id="navMobile"></nav>
+
+<div id="toast"><span id="toastMsg"></span><button id="toastUndo" style="display:none">Rückgängig</button></div>
+<div id="modalBack"></div>
+<div id="miniModal" class="card"></div>
+<input type="file" id="floorBgFile" accept="image/*" style="display:none">
+
+<script>
+'use strict';
+/* ================= State ================= */
+const STORE_KEY = 'officehub.v1';
+const defaults = () => ({
+  tasks: [],            // {id,title,assignee,due,prio,repeat,done,createdAt}
+  lists: [],            // {id,name,items:[{id,name,qty,done}]}
+  activeList: null,
+  people: [],
+  expenses: [],         // {id,desc,amount(cents),payer,parts,date}
+  settledLog: [],       // {id,date,settlements,expenses}
+  floors: [],           // {id,name,bg}
+  rooms: [],            // {id,name,type,capacity,floor,plan:{x,y,w,h}}
+  bookings: [],         // meeting: {...,start,end,title,person,seriesId?} | desk: {...,person}
+  roomsSeeded: false,
+  shellys: [],          // {id,name,ip,gen,lastState}
+  nukis: [],            // {id,name,bridgeIp,token,nukiId}
+  itemHistory: {},      // name -> count
+  sync: {url:'', key:'', office:'', enabled:false},
+  activeFloor: null
+});
+let state = load();
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(!raw) return defaults();
+    return Object.assign(defaults(), JSON.parse(raw));
+  }catch(e){ return defaults(); }
+}
+const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+
+/* Migrationen älterer Stände */
+(function migrate(){
+  let ch = false;
+  if(!state.roomsSeeded){
+    state.rooms = [
+      {id:uid(), name:'Meetingraum Groß', type:'meeting', capacity:8},
+      {id:uid(), name:'Meetingraum Klein', type:'meeting', capacity:4},
+      {id:uid(), name:'Arbeitsplatz 1', type:'desk', capacity:1},
+      {id:uid(), name:'Arbeitsplatz 2', type:'desk', capacity:1},
+      {id:uid(), name:'Arbeitsplatz 3', type:'desk', capacity:1},
+      {id:uid(), name:'Arbeitsplatz 4', type:'desk', capacity:1},
+    ];
+    state.roomsSeeded = true; ch = true;
+  }
+  if(state.nuki && state.nuki.bridgeIp && !state.nukis.length){
+    state.nukis.push({id:uid(), name:'Eingangstür', bridgeIp:state.nuki.bridgeIp, token:state.nuki.token, nukiId:state.nuki.nukiId});
+    delete state.nuki; ch = true;
+  }
+  if(!state.floors.length){
+    state.floors = [{id:uid(), name:'Etage 1', bg:null}]; ch = true;
+  }
+  for(const r of state.rooms){ if(!r.floor){ r.floor = state.floors[0].id; ch = true; } }
+  for(const t of state.tasks){ if(!t.repeat){ t.repeat = 'nie'; ch = true; } }
+  if(!state.activeFloor || !state.floors.some(f=>f.id===state.activeFloor)){
+    state.activeFloor = state.floors[0].id; ch = true;
+  }
+  if(ch) persist();
+})();
+
+function persist(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+function save(){
+  persist();
+  syncMarkChanges();
+}
+
+/* ================= Helpers ================= */
+const $ = s => document.querySelector(s);
+const euro = c => (c/100).toLocaleString('de-DE',{style:'currency',currency:'EUR'});
+function parseAmount(str){
+  const norm = String(str).trim().replace(/\./g,'').replace(',', '.');
+  const v = Number(norm);
+  if(!isFinite(v) || v <= 0) return null;
+  return Math.round(v*100);
+}
+function fmtDate(iso){
+  if(!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${d}.${m}.${y}`;
+}
+function toISO(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function todayISO(){ return toISO(new Date()); }
+function addDays(iso, n){
+  const d = new Date(iso+'T12:00:00'); d.setDate(d.getDate()+n); return toISO(d);
+}
+function weekdayName(iso){
+  return new Date(iso+'T12:00:00').toLocaleDateString('de-DE',{weekday:'long'});
+}
+function el(tag, attrs = {}, ...children){
+  const n = document.createElement(tag);
+  for(const [k,v] of Object.entries(attrs)){
+    if(k === 'class') n.className = v;
+    else if(k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for(const c of children){
+    if(c == null) continue;
+    n.append(c.nodeType ? c : document.createTextNode(c));
+  }
+  return n;
+}
+const timeToMin = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
+const minToTime = m => String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+const DAY_START = 420, DAY_END = 1200; // 07:00–20:00
+const REPEAT_LABEL = {taeglich:'täglich', woechentlich:'wöchentlich', monatlich:'monatlich'};
+
+/* Toast mit Undo */
+let toastTimer = null, undoSnapshot = null;
+function toast(msg, withUndo = false){
+  $('#toastMsg').textContent = msg;
+  $('#toastUndo').style.display = withUndo ? '' : 'none';
+  const t = $('#toast');
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove('show'), 4200);
+}
+function snapshot(){ undoSnapshot = JSON.parse(JSON.stringify(state)); }
+$('#toastUndo').addEventListener('click', ()=>{
+  if(undoSnapshot){ state = undoSnapshot; undoSnapshot = null; save(); renderAll(); }
+  $('#toast').classList.remove('show');
+});
+
+/* Konfetti */
+function confetti(){
+  const emo = ['🎉','✨','🎊','⭐','💙'];
+  for(let i=0;i<36;i++){
+    const p = el('span',{class:'confetti-piece'}, emo[i%emo.length]);
+    p.style.left = Math.random()*100+'vw';
+    p.style.animationDuration = (1.8+Math.random()*1.4)+'s';
+    p.style.animationDelay = (Math.random()*0.4)+'s';
+    p.style.fontSize = (16+Math.random()*14)+'px';
+    p.addEventListener('animationend', ()=>p.remove());
+    document.body.append(p);
+  }
+}
+
+/* Theme */
+const THEME_KEY = 'officehub.theme';
+function applyTheme(t){
+  document.documentElement.dataset.theme = t;
+  $('#themeBtn').textContent = t==='dark' ? '☀️' : '🌙';
+}
+let theme = localStorage.getItem(THEME_KEY) ||
+  (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+$('#themeBtn').addEventListener('click', ()=>{
+  theme = theme==='dark' ? 'light' : 'dark';
+  localStorage.setItem(THEME_KEY, theme);
+  applyTheme(theme);
+});
+
+/* ================= Team-Sync (Supabase REST) ================= */
+const SYNC_KEYS = ['tasks','lists','people','expenses','settledLog','floors','rooms','bookings','shellys','nukis','itemHistory'];
+let saveHashes = {}, syncDirty = {}, lastLocalEdit = {}, pushTimer = null, pullTimer = null;
+function hashStr(s){ let h=5381; for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))|0; } return h; }
+const collHash = k => hashStr(JSON.stringify(state[k]));
+function initSyncHashes(){ for(const k of SYNC_KEYS) saveHashes[k] = collHash(k); }
+function syncReady(){ return state.sync.enabled && state.sync.url && state.sync.key && state.sync.office; }
+function syncMarkChanges(){
+  for(const k of SYNC_KEYS){
+    const h = collHash(k);
+    if(saveHashes[k] !== undefined && saveHashes[k] !== h){
+      syncDirty[k] = true;
+      lastLocalEdit[k] = Date.now();
+    }
+    saveHashes[k] = h;
+  }
+  if(syncReady()) schedulePush();
+}
+function schedulePush(){
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(syncPush, 1500);
+}
+function syncHeaders(){
+  return {apikey: state.sync.key, Authorization: 'Bearer '+state.sync.key, 'Content-Type':'application/json'};
+}
+function syncBase(){ return state.sync.url.replace(/\/+$/,''); }
+function setSyncStatus(txt, ok){
+  $('#syncStatus').textContent = txt;
+  const d = $('#syncDot');
+  d.className = 'sync-dot' + (ok===true ? ' ok' : ok===false ? ' err' : '');
+}
+async function syncPush(){
+  if(!syncReady()) return;
+  const keys = Object.keys(syncDirty);
+  if(!keys.length) return;
+  const rows = keys.map(k => ({office_id: state.sync.office, key: k, value: state[k], updated_at: new Date().toISOString()}));
+  try{
+    const res = await fetch(syncBase()+'/rest/v1/office_kv?on_conflict=office_id,key', {
+      method:'POST',
+      headers: {...syncHeaders(), Prefer:'resolution=merge-duplicates'},
+      body: JSON.stringify(rows)
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    for(const k of keys) delete syncDirty[k];
+    setSyncStatus('Synchron ✓ · '+new Date().toLocaleTimeString('de-DE'), true);
+  }catch(e){
+    setSyncStatus('Übertragung fehlgeschlagen – neuer Versuch folgt.', false);
+    schedulePush();
+  }
+}
+function applyRemote(key, value){
+  state[key] = value;
+  persist();
+  saveHashes[key] = collHash(key);
+  delete syncDirty[key];
+}
+async function syncPull(){
+  if(!syncReady()) return;
+  try{
+    const res = await fetch(syncBase()+'/rest/v1/office_kv?office_id=eq.'+encodeURIComponent(state.sync.office)+'&select=key,value,updated_at', {headers: syncHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const rows = await res.json();
+    let changed = false;
+    for(const row of rows){
+      if(!SYNC_KEYS.includes(row.key)) continue;
+      const rh = hashStr(JSON.stringify(row.value));
+      if(rh === collHash(row.key)) continue;
+      if(syncDirty[row.key]){
+        const remoteTs = new Date(row.updated_at).getTime();
+        if(remoteTs > (lastLocalEdit[row.key]||0)){ applyRemote(row.key, row.value); changed = true; }
+      }else{
+        applyRemote(row.key, row.value); changed = true;
+      }
+    }
+    if(changed) renderAll();
+    setSyncStatus('Synchron ✓ · '+new Date().toLocaleTimeString('de-DE'), true);
+  }catch(e){
+    setSyncStatus('Keine Verbindung zum Sync-Server.', false);
+  }
+}
+function startSync(){
+  clearInterval(pullTimer);
+  if(!syncReady()){ setSyncStatus('Aus – Daten bleiben nur in diesem Browser.'); return; }
+  setSyncStatus('Verbinde…');
+  syncPull();
+  pullTimer = setInterval(()=>{ if(document.visibilityState==='visible') syncPull(); }, 8000);
+}
+function renderSyncUI(){
+  $('#syncUrl').value = state.sync.url;
+  $('#syncKey').value = state.sync.key;
+  $('#syncOffice').value = state.sync.office;
+  $('#syncToggle').textContent = state.sync.enabled ? '⏸ Deaktivieren' : '▶️ Aktivieren';
+}
+$('#syncGenCode').addEventListener('click', ()=>{
+  $('#syncOffice').value = (crypto.randomUUID ? crypto.randomUUID() : uid()+uid());
+  toast('Büro-Code erzeugt – diesen Code auf allen Geräten eintragen.');
+});
+$('#syncToggle').addEventListener('click', ()=>{
+  if(state.sync.enabled){
+    state.sync.enabled = false;
+    persist(); renderSyncUI(); startSync();
+    toast('Team-Sync deaktiviert.');
+    return;
+  }
+  const url = $('#syncUrl').value.trim(), key = $('#syncKey').value.trim(), office = $('#syncOffice').value.trim();
+  if(!url || !key || !office){ toast('Bitte URL, Anon-Key und Büro-Code ausfüllen.'); return; }
+  state.sync = {url, key, office, enabled:true};
+  persist(); renderSyncUI();
+  for(const k of SYNC_KEYS){ syncDirty[k] = true; lastLocalEdit[k] = lastLocalEdit[k]||1; }
+  startSync(); schedulePush();
+  toast('Team-Sync aktiviert. 🔄');
+});
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && syncReady()) syncPull(); });
+
+/* ================= Navigation ================= */
+const VIEWS = [
+  {id:'home',     label:'Übersicht', ico:'🏠'},
+  {id:'tasks',    label:'Aufgaben',  ico:'✅'},
+  {id:'shopping', label:'Einkauf',   ico:'🛒'},
+  {id:'money',    label:'Finanzen',  ico:'💶'},
+  {id:'rooms',    label:'Räume',     ico:'📅'},
+  {id:'smart',    label:'Smart',     ico:'💡'},
+];
+let current = 'home';
+function buildNav(){
+  for(const nav of [$('#navDesktop'), $('#navMobile')]){
+    nav.innerHTML = '';
+    for(const v of VIEWS){
+      const isMobile = nav.id === 'navMobile';
+      const b = el('button', {onclick: ()=>go(v.id)},
+        isMobile ? el('span',{class:'ico'},v.ico) : null,
+        v.label);
+      b.dataset.view = v.id;
+      nav.append(b);
+    }
+  }
+}
+function go(id){
+  current = id;
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active', s.id === 'view-'+id));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.view === id));
+  window.scrollTo({top:0});
+  renderAll();
+}
+document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.goto)));
+
+/* ================= Übersicht ================= */
+function renderHome(){
+  const h = new Date().getHours();
+  $('#homeGreeting').textContent = h<11 ? 'Guten Morgen! ☕' : h<17 ? 'Übersicht' : 'Guten Abend! 🌆';
+  const openTasks = state.tasks.filter(t=>!t.done);
+  $('#statTasks').textContent = openTasks.length;
+  const openItems = state.lists.reduce((n,l)=>n + l.items.filter(i=>!i.done).length, 0);
+  $('#statShopping').textContent = openItems;
+  const {settlements} = computeBalances();
+  $('#statMoney').textContent = euro(settlements.reduce((n,s)=>n+s.amount,0));
+  $('#statRooms').textContent = state.bookings.filter(b=>b.date===todayISO()).length;
+
+  const list = $('#homeNextList'); list.innerHTML = '';
+  const next = openTasks.slice().sort(byDue).slice(0,5);
+  $('#homeNextEmpty').style.display = next.length ? 'none' : '';
+  for(const t of next) list.append(taskRow(t, true));
+
+  const qa = $('#quickActions'); qa.innerHTML = '';
+  for(const d of state.shellys){
+    qa.append(el('button',{class:'qa-btn'+(d.lastState?' on':''), onclick:()=>shellyCmd(d, !d.lastState)},
+      '💡 ', d.name, d.lastState ? ' aus' : ' an'));
+  }
+  for(const n of state.nukis){
+    if(n.bridgeIp && n.token && n.nukiId){
+      qa.append(el('button',{class:'qa-btn', onclick:()=>nukiCmd(n, 3, `${n.name} öffnen`)},'🚪 ', n.name, ' öffnen'));
+    }
+  }
+  $('#quickCard').style.display = qa.children.length ? '' : 'none';
+}
+
+/* Backup */
+$('#exportBtn').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const a = el('a',{href:URL.createObjectURL(blob), download:'officehub-backup.json'});
+  document.body.append(a); a.click(); a.remove();
+  toast('Backup heruntergeladen. 💾');
+});
+$('#importBtn').addEventListener('click', ()=> $('#importFile').click());
+$('#importFile').addEventListener('change', e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{
+    try{
+      const data = JSON.parse(r.result);
+      if(!data || typeof data !== 'object' || !Array.isArray(data.tasks)) throw new Error('bad');
+      snapshot();
+      state = Object.assign(defaults(), data);
+      save(); renderAll(); renderSyncUI();
+      toast('Backup importiert.', true);
+    }catch(err){ toast('Datei ist kein gültiges OfficeHub-Backup.'); }
+    e.target.value = '';
+  };
+  r.readAsText(f);
+});
+
+/* ================= Aufgaben ================= */
+let taskFilter = 'offen';
+function byDue(a,b){
+  if(!!a.due !== !!b.due) return a.due ? -1 : 1;
+  if(a.due !== b.due) return a.due < b.due ? -1 : 1;
+  const p = {hoch:0, mittel:1, niedrig:2};
+  return p[a.prio] - p[b.prio];
+}
+function nextOccurrence(baseISO, repeat){
+  let d = baseISO;
+  const today = todayISO();
+  do{
+    if(repeat==='taeglich') d = addDays(d, 1);
+    else if(repeat==='woechentlich') d = addDays(d, 7);
+    else{
+      const dt = new Date(d+'T12:00:00'); dt.setMonth(dt.getMonth()+1); d = toISO(dt);
+    }
+  }while(d <= today);
+  return d;
+}
+function taskRow(t, compact){
+  const isRepeating = t.repeat && t.repeat !== 'nie';
+  const check = el('button',{
+    class:'check' + (t.done?' on':''), 'aria-label': t.done?'Als offen markieren':'Als erledigt markieren',
+    onclick: ()=>{
+      if(!t.done && isRepeating){
+        t.due = nextOccurrence(t.due || todayISO(), t.repeat);
+        save(); renderAll();
+        toast(`🔁 „${t.title}“ erledigt – wieder fällig am ${fmtDate(t.due)}.`);
+        return;
+      }
+      t.done = !t.done;
+      save(); renderAll();
+      if(t.done && !state.tasks.some(x=>!x.done)) confetti();
+    }
+  }, '✓');
+  const meta = el('div',{class:'row-meta'});
+  if(t.assignee) meta.append(el('span',{},'👤 '+t.assignee));
+  if(t.due){
+    const overdue = !t.done && t.due < todayISO();
+    meta.append(el('span',{class: overdue?'overdue':''}, '📅 ' + fmtDate(t.due) + (overdue?' – überfällig!':'')));
+  }
+  if(isRepeating) meta.append(el('span',{},'🔁 '+REPEAT_LABEL[t.repeat]));
+  return el('li',{class: t.done?'done':''},
+    check,
+    el('div',{class:'row-main'}, el('div',{class:'row-title'},t.title), meta),
+    el('span',{class:'badge '+t.prio}, t.prio.charAt(0).toUpperCase()+t.prio.slice(1)),
+    compact ? null : el('button',{class:'icon-btn','aria-label':'Aufgabe löschen', onclick:()=>{
+      snapshot();
+      state.tasks = state.tasks.filter(x=>x.id!==t.id);
+      save(); renderAll(); toast('Aufgabe gelöscht.', true);
+    }},'🗑')
+  );
+}
+function renderTasks(){
+  const list = $('#taskList'); list.innerHTML = '';
+  let items = state.tasks.slice();
+  if(taskFilter==='offen') items = items.filter(t=>!t.done);
+  if(taskFilter==='erledigt') items = items.filter(t=>t.done);
+  items.sort(byDue);
+  $('#taskEmpty').style.display = items.length ? 'none' : '';
+  for(const t of items) list.append(taskRow(t));
+}
+$('#taskForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const title = $('#taskTitle').value.trim();
+  if(!title){ $('#taskErr').classList.add('show'); return; }
+  $('#taskErr').classList.remove('show');
+  state.tasks.push({
+    id: uid(), title,
+    assignee: $('#taskAssignee').value.trim(),
+    due: $('#taskDue').value,
+    prio: $('#taskPrio').value,
+    repeat: $('#taskRepeat').value,
+    done: false, createdAt: Date.now()
+  });
+  save();
+  $('#taskTitle').value = ''; $('#taskAssignee').value=''; $('#taskDue').value=''; $('#taskPrio').value='mittel'; $('#taskRepeat').value='nie';
+  taskFilter = taskFilter==='erledigt' ? 'offen' : taskFilter;
+  document.querySelectorAll('#taskFilters .chip').forEach(c=>c.classList.toggle('active', c.dataset.f===taskFilter));
+  renderAll();
+  $('#taskTitle').focus();
+});
+$('#taskFilters').addEventListener('click', e=>{
+  const b = e.target.closest('.chip'); if(!b) return;
+  taskFilter = b.dataset.f;
+  document.querySelectorAll('#taskFilters .chip').forEach(c=>c.classList.toggle('active', c===b));
+  renderTasks();
+});
+
+/* ================= Einkauf ================= */
+function activeListObj(){ return state.lists.find(l=>l.id===state.activeList) || null; }
+function updateItemSuggestions(){
+  const dl = $('#itemSugg'); dl.innerHTML = '';
+  const names = Object.entries(state.itemHistory).sort((a,b)=>b[1]-a[1]).slice(0,25);
+  for(const [name] of names) dl.append(el('option',{value:name}));
+}
+function renderShopping(){
+  const chips = $('#listChips'); chips.innerHTML = '';
+  if(state.lists.length && !activeListObj()) state.activeList = state.lists[0].id;
+  for(const l of state.lists){
+    const open = l.items.filter(i=>!i.done).length;
+    chips.append(el('button',{
+      class:'chip'+(l.id===state.activeList?' active':''),
+      onclick:()=>{ state.activeList = l.id; persist(); renderShopping(); }
+    }, l.name + (open?` (${open})`:'')));
+  }
+  const list = activeListObj();
+  $('#itemCard').style.display = list ? '' : 'none';
+  $('#noListEmpty').style.display = list ? 'none' : '';
+  updateItemSuggestions();
+  if(!list) return;
+  $('#itemCardTitle').textContent = list.name;
+  const ul = $('#itemList'); ul.innerHTML = '';
+  const items = list.items.slice().sort((a,b)=> a.done - b.done);
+  $('#itemEmpty').style.display = items.length ? 'none' : '';
+  for(const it of items){
+    ul.append(el('li',{class: it.done?'done':''},
+      el('button',{class:'check'+(it.done?' on':''), 'aria-label':'Abhaken', onclick:()=>{ it.done=!it.done; save(); renderAll(); }},'✓'),
+      el('div',{class:'row-main'},
+        el('div',{class:'row-title'}, it.name),
+        it.qty ? el('div',{class:'row-meta'}, el('span',{}, it.qty)) : null),
+      el('button',{class:'icon-btn','aria-label':'Artikel löschen', onclick:()=>{
+        snapshot();
+        list.items = list.items.filter(x=>x.id!==it.id);
+        save(); renderAll(); toast('Artikel gelöscht.', true);
+      }},'🗑')
+    ));
+  }
+}
+$('#listForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const name = $('#listName').value.trim();
+  if(!name){ $('#listErr').classList.add('show'); return; }
+  $('#listErr').classList.remove('show');
+  const l = {id: uid(), name, items: []};
+  state.lists.push(l); state.activeList = l.id; save();
+  $('#listName').value = '';
+  renderShopping();
+});
+$('#itemForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const list = activeListObj(); if(!list) return;
+  const name = $('#itemName').value.trim();
+  if(!name){ $('#itemErr').classList.add('show'); return; }
+  $('#itemErr').classList.remove('show');
+  list.items.push({id: uid(), name, qty: $('#itemQty').value.trim(), done:false});
+  state.itemHistory[name] = (state.itemHistory[name]||0) + 1;
+  save();
+  $('#itemName').value=''; $('#itemQty').value='';
+  renderAll();
+  $('#itemName').focus();
+});
+$('#clearChecked').addEventListener('click', ()=>{
+  const list = activeListObj(); if(!list) return;
+  const n = list.items.filter(i=>i.done).length;
+  if(!n){ toast('Nichts abgehakt.'); return; }
+  snapshot();
+  list.items = list.items.filter(i=>!i.done);
+  save(); renderAll(); toast(`${n} abgehakte${n===1?'r':''} Artikel entfernt.`, true);
+});
+$('#deleteList').addEventListener('click', ()=>{
+  const list = activeListObj(); if(!list) return;
+  snapshot();
+  state.lists = state.lists.filter(l=>l.id!==list.id);
+  state.activeList = state.lists.length ? state.lists[0].id : null;
+  save(); renderAll(); toast(`Liste „${list.name}“ gelöscht.`, true);
+});
+
+/* ================= Finanzen ================= */
+function renderPeople(){
+  const wrap = $('#peopleWrap'); wrap.innerHTML = '';
+  for(const p of state.people){
+    wrap.append(el('span',{class:'person-chip'}, p,
+      el('button',{'aria-label':`${p} entfernen`, onclick:()=>removePerson(p)},'✕')));
+  }
+  if(!state.people.length){
+    wrap.append(el('span',{class:'row-meta'},'Noch keine Personen – füge unten mindestens zwei hinzu.'));
+  }
+  const sel = $('#expPayer'); sel.innerHTML = '';
+  for(const p of state.people) sel.append(el('option',{value:p},p));
+  const boxes = $('#partBoxes'); boxes.innerHTML = '';
+  for(const p of state.people){
+    const cb = el('input',{type:'checkbox', value:p, checked:''});
+    const lab = el('label',{class:'on'}, cb, p);
+    cb.addEventListener('change', ()=> lab.classList.toggle('on', cb.checked));
+    boxes.append(lab);
+  }
+}
+function removePerson(name){
+  const used = state.expenses.some(x=>x.payer===name || x.parts.includes(name));
+  if(used){ toast(`„${name}“ ist in Ausgaben enthalten und kann nicht entfernt werden.`); return; }
+  snapshot();
+  state.people = state.people.filter(p=>p!==name);
+  save(); renderAll(); toast(`„${name}“ entfernt.`, true);
+}
+$('#personForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const err = $('#personErr');
+  const name = $('#personName').value.trim();
+  if(!name){ err.textContent='Bitte einen Namen eingeben.'; err.classList.add('show'); return; }
+  if(state.people.some(p=>p.toLowerCase()===name.toLowerCase())){
+    err.textContent = `„${name}“ gibt es schon.`; err.classList.add('show'); return;
+  }
+  err.classList.remove('show');
+  state.people.push(name); save();
+  $('#personName').value='';
+  renderAll();
+});
+$('#expenseForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const err = $('#expErr');
+  const desc = $('#expDesc').value.trim();
+  const cents = parseAmount($('#expAmount').value);
+  const payer = $('#expPayer').value;
+  const parts = [...document.querySelectorAll('#partBoxes input:checked')].map(c=>c.value);
+  if(state.people.length < 2){ err.textContent='Füge zuerst mindestens zwei Personen hinzu.'; err.classList.add('show'); return; }
+  if(!desc){ err.textContent='Bitte eine Beschreibung eingeben.'; err.classList.add('show'); return; }
+  if(cents === null){ err.textContent='Bitte einen gültigen Betrag eingeben (z. B. 42,50).'; err.classList.add('show'); return; }
+  if(!parts.length){ err.textContent='Bitte mindestens eine Person zum Aufteilen wählen.'; err.classList.add('show'); return; }
+  err.classList.remove('show');
+  state.expenses.push({id:uid(), desc, amount:cents, payer, parts, date: $('#expDate').value || todayISO()});
+  save();
+  $('#expDesc').value=''; $('#expAmount').value='';
+  renderAll();
+  toast('Ausgabe gespeichert.');
+});
+function computeBalances(){
+  const net = {};
+  for(const p of state.people) net[p] = 0;
+  for(const x of state.expenses){
+    if(!(x.payer in net)) net[x.payer] = 0;
+    net[x.payer] += x.amount;
+    const share = Math.floor(x.amount / x.parts.length);
+    let rest = x.amount - share * x.parts.length;
+    for(const p of x.parts){
+      if(!(p in net)) net[p] = 0;
+      net[p] -= share + (rest-- > 0 ? 1 : 0);
+    }
+  }
+  const debtors = [], creditors = [];
+  for(const [p,v] of Object.entries(net)){
+    if(v < 0) debtors.push({p, v:-v});
+    else if(v > 0) creditors.push({p, v});
+  }
+  debtors.sort((a,b)=>b.v-a.v); creditors.sort((a,b)=>b.v-a.v);
+  const settlements = [];
+  let i=0, j=0;
+  while(i<debtors.length && j<creditors.length){
+    const pay = Math.min(debtors[i].v, creditors[j].v);
+    if(pay > 0) settlements.push({from:debtors[i].p, to:creditors[j].p, amount:pay});
+    debtors[i].v -= pay; creditors[j].v -= pay;
+    if(debtors[i].v===0) i++;
+    if(creditors[j].v===0) j++;
+  }
+  return {net, settlements};
+}
+$('#settleAll').addEventListener('click', ()=>{
+  const {settlements} = computeBalances();
+  if(!settlements.length || !state.expenses.length) return;
+  snapshot();
+  state.settledLog.unshift({
+    id: uid(), date: todayISO(),
+    settlements: JSON.parse(JSON.stringify(settlements)),
+    expenses: state.expenses
+  });
+  state.expenses = [];
+  save(); renderAll();
+  toast('Runde quittgestellt – Ausgaben ins Archiv verschoben. ✅', true);
+});
+function renderMoney(){
+  renderPeople();
+  const {net, settlements} = computeBalances();
+  const bal = $('#balances'); bal.innerHTML = '';
+  const hasExp = state.expenses.length > 0;
+  $('#balEmpty').style.display = hasExp ? 'none' : '';
+  if(hasExp){
+    for(const [p,v] of Object.entries(net)){
+      bal.append(el('div',{class:'balance-row'},
+        el('span',{}, p),
+        el('span',{class: v>0?'amount-pos': v<0?'amount-neg':''},
+          (v>0?'+':'') + euro(v).replace('-','−'))));
+    }
+  }
+  const sc = $('#settleCard');
+  sc.style.display = settlements.length ? '' : 'none';
+  const sWrap = $('#settlements'); sWrap.innerHTML = '';
+  for(const s of settlements){
+    sWrap.append(el('div',{class:'settle'},'💸 ',
+      el('span',{}, `${s.from} zahlt `, el('b',{}, euro(s.amount)), ` an ${s.to}`)));
+  }
+  const ul = $('#expenseList'); ul.innerHTML = '';
+  $('#expEmpty').style.display = hasExp ? 'none' : '';
+  const sorted = state.expenses.slice().sort((a,b)=> (a.date<b.date?1:-1));
+  for(const x of sorted){
+    ul.append(el('li',{},
+      el('div',{class:'row-main'},
+        el('div',{class:'row-title'}, x.desc),
+        el('div',{class:'row-meta'},
+          el('span',{},'💳 '+x.payer),
+          el('span',{},'👥 '+x.parts.join(', ')),
+          el('span',{},'📅 '+fmtDate(x.date)))),
+      el('span',{style:'font-weight:700'}, euro(x.amount)),
+      el('button',{class:'icon-btn','aria-label':'Ausgabe löschen', onclick:()=>{
+        snapshot();
+        state.expenses = state.expenses.filter(y=>y.id!==x.id);
+        save(); renderAll(); toast('Ausgabe gelöscht.', true);
+      }},'🗑')
+    ));
+  }
+  /* Archiv */
+  $('#settledDetails').style.display = state.settledLog.length ? '' : 'none';
+  const sl = $('#settledList'); sl.innerHTML = '';
+  for(const entry of state.settledLog){
+    const sum = entry.expenses.reduce((n,x)=>n+x.amount,0);
+    sl.append(el('li',{},
+      el('div',{class:'row-main'},
+        el('div',{class:'row-title'}, `${fmtDate(entry.date)} · ${entry.expenses.length} Ausgabe${entry.expenses.length!==1?'n':''} · ${euro(sum)}`),
+        el('div',{class:'row-meta'},
+          el('span',{}, entry.settlements.map(s=>`${s.from}→${s.to} ${euro(s.amount)}`).join(' · '))))
+    ));
+  }
+}
+
+/* ================= Räume & Buchungen ================= */
+let bookDate = todayISO();
+let weekMode = false;
+function shiftDay(delta){
+  bookDate = addDays(bookDate, weekMode ? delta*7 : delta);
+  renderRooms();
+}
+$('#dayPrev').addEventListener('click', ()=>shiftDay(-1));
+$('#dayNext').addEventListener('click', ()=>shiftDay(1));
+$('#dayToday').addEventListener('click', ()=>{ bookDate = todayISO(); renderRooms(); });
+$('#bookDate').addEventListener('change', e=>{ if(e.target.value){ bookDate = e.target.value; renderRooms(); } });
+$('#modeDay').addEventListener('click', ()=>{ weekMode = false; renderRooms(); });
+$('#modeWeek').addEventListener('click', ()=>{ weekMode = true; renderRooms(); });
+
+function timeSelect(defVal){
+  const s = el('select',{});
+  for(let m=DAY_START; m<=DAY_END; m+=30){
+    const t = minToTime(m);
+    const o = el('option',{value:t}, t);
+    if(t===defVal) o.selected = true;
+    s.append(o);
+  }
+  return s;
+}
+function repeatSelect(){
+  const s = el('select',{});
+  s.append(el('option',{value:'nie'},'Einmalig'));
+  s.append(el('option',{value:'taeglich'},'Serie: täglich (Mo–Fr)'));
+  s.append(el('option',{value:'woechentlich'},'Serie: wöchentlich'));
+  return s;
+}
+function overlaps(roomId, date, start, end, ignoreId){
+  const s = timeToMin(start), e = timeToMin(end);
+  return state.bookings.find(b =>
+    b.roomId===roomId && b.date===date && b.start && b.id!==ignoreId &&
+    timeToMin(b.start) < e && s < timeToMin(b.end));
+}
+function createBookings(room, startDate, s, e, title, person, rep, until){
+  if(rep==='nie'){
+    const conflict = overlaps(room.id, startDate, s, e);
+    if(conflict){ toast(`Kollision: ${conflict.start}–${conflict.end} „${conflict.title}“ ist schon gebucht.`); return false; }
+    state.bookings.push({id:uid(), roomId:room.id, date:startDate, start:s, end:e, title, person});
+    save(); renderAll();
+    toast(`${room.name}: ${s}–${e} gebucht. ✅`);
+    return true;
+  }
+  if(!until || until < startDate){ toast('Bitte ein gültiges Serien-Ende wählen.'); return false; }
+  const startDow = new Date(startDate+'T12:00:00').getDay();
+  const sid = uid();
+  let d = startDate, made = 0, skipped = 0, guard = 0;
+  while(d <= until && guard < 130){
+    guard++;
+    const dow = new Date(d+'T12:00:00').getDay();
+    const inc = rep==='taeglich' ? (dow>=1 && dow<=5) : dow===startDow;
+    if(inc){
+      if(overlaps(room.id, d, s, e)) skipped++;
+      else{ state.bookings.push({id:uid(), roomId:room.id, date:d, start:s, end:e, title, person, seriesId:sid}); made++; }
+    }
+    d = addDays(d, 1);
+  }
+  save(); renderAll();
+  toast(`🔁 ${made} Termin${made!==1?'e':''} angelegt${skipped?`, ${skipped} wegen Kollision übersprungen`:''}.`);
+  return made > 0;
+}
+function deleteBooking(b){
+  snapshot();
+  state.bookings = state.bookings.filter(x=>x.id!==b.id);
+  save(); renderAll(); toast('Buchung gelöscht.', true);
+}
+function confirmDeleteBooking(b){
+  if(!b.seriesId){ deleteBooking(b); return; }
+  const count = state.bookings.filter(x=>x.seriesId===b.seriesId).length;
+  openModal(
+    modalHead('🔁 Serientermin'),
+    el('p',{class:'sub', style:'margin-bottom:12px'}, `„${b.title}“ gehört zu einer Serie mit ${count} Terminen.`),
+    el('div',{class:'form-row'},
+      el('button',{class:'btn ghost', onclick:()=>{ closeModal(); deleteBooking(b); }},'Nur diesen Termin löschen'),
+      el('button',{class:'btn danger', onclick:()=>{
+        closeModal(); snapshot();
+        state.bookings = state.bookings.filter(x=>x.seriesId!==b.seriesId);
+        save(); renderAll(); toast(`Serie gelöscht (${count} Termine).`, true);
+      }},'Ganze Serie löschen')));
+}
+function bookingFormRow(room, opts = {}){
+  const inTitle = el('input',{type:'text', placeholder:'Termin, z. B. Teammeeting', autocomplete:'off'});
+  const inPerson = el('input',{type:'text', placeholder:'Gebucht von', autocomplete:'off'});
+  const selStart = timeSelect('09:00');
+  const selEnd = timeSelect('10:00');
+  const selRep = repeatSelect();
+  const inUntil = el('input',{type:'date', value: addDays(bookDate, 28), title:'Serie endet am'});
+  inUntil.style.display = 'none';
+  selRep.addEventListener('change', ()=>{ inUntil.style.display = selRep.value==='nie' ? 'none' : ''; });
+  const form = el('form',{style:'margin-top:10px', onsubmit:(ev)=>{
+    ev.preventDefault();
+    const title = inTitle.value.trim();
+    if(!title){ toast('Bitte einen Termin-Titel eingeben.'); return; }
+    if(timeToMin(selEnd.value) <= timeToMin(selStart.value)){ toast('Ende muss nach dem Beginn liegen.'); return; }
+    const ok = createBookings(room, bookDate, selStart.value, selEnd.value, title, inPerson.value.trim(), selRep.value, inUntil.value);
+    if(ok && opts.onDone) opts.onDone();
+  }},
+    el('div',{class:'form-row', style:'margin-bottom:8px'}, el('div',{class:'grow'}, inTitle), inPerson),
+    el('div',{class:'form-row'}, selStart, selEnd, selRep, inUntil,
+      el('button',{class:'btn', type:'submit'},'Buchen')));
+  return form;
+}
+function bookingRow(b, compactModal){
+  return el('li',{},
+    el('span',{class:'badge neutral'}, `${b.start}–${b.end}`),
+    el('div',{class:'row-main'},
+      el('div',{class:'row-title'}, b.title + (b.seriesId?' 🔁':'')),
+      b.person ? el('div',{class:'row-meta'}, el('span',{},'👤 '+b.person)) : null),
+    el('button',{class:'icon-btn','aria-label':'Buchung löschen', onclick:()=>confirmDeleteBooking(b)},'🗑'));
+}
+
+function mondayOf(iso){
+  const d = new Date(iso+'T12:00:00');
+  const shift = (d.getDay()+6)%7;
+  d.setDate(d.getDate()-shift);
+  return toISO(d);
+}
+function renderWeek(){
+  const mon = mondayOf(bookDate);
+  const days = Array.from({length:7}, (_,i)=>addDays(mon,i));
+  $('#weekTitle').textContent = `📅 Woche ${fmtDate(mon)} – ${fmtDate(days[6])}`;
+  const tbl = $('#weekTable'); tbl.innerHTML = '';
+  const rooms = state.rooms.filter(r=>r.type==='meeting' && r.floor===state.activeFloor);
+  const head = el('tr',{}, el('th',{},'Raum'));
+  for(const d of days){
+    head.append(el('th',{class: d===todayISO()?'today':''},
+      new Date(d+'T12:00:00').toLocaleDateString('de-DE',{weekday:'short'})+' '+fmtDate(d).slice(0,6)));
+  }
+  tbl.append(head);
+  if(!rooms.length){
+    tbl.append(el('tr',{}, el('td',{colspan:'8', class:'roomcol'},'Keine Meetingräume auf dieser Etage.')));
+    return;
+  }
+  for(const room of rooms){
+    const tr = el('tr',{}, el('td',{class:'roomcol'},'🗣️ '+room.name));
+    for(const d of days){
+      const cell = el('td',{onclick:()=>{ bookDate = d; weekMode = false; renderRooms(); }});
+      const dayB = state.bookings
+        .filter(b=>b.roomId===room.id && b.date===d && b.start)
+        .sort((a,b)=> a.start<b.start ? -1 : 1);
+      for(const b of dayB) cell.append(el('div',{class:'wk-b', title:b.title}, `${b.start} ${b.title}`));
+      tr.append(cell);
+    }
+    tbl.append(tr);
+  }
+}
+
+function renderFloorChips(){
+  const wrap = $('#floorChips'); wrap.innerHTML = '';
+  if(!state.floors.some(f=>f.id===state.activeFloor)) state.activeFloor = state.floors[0].id;
+  for(const f of state.floors){
+    wrap.append(el('button',{
+      class:'chip'+(f.id===state.activeFloor?' active':''),
+      onclick:()=>{ state.activeFloor = f.id; persist(); renderRooms(); }
+    }, '🏢 '+f.name));
+  }
+  wrap.append(el('button',{class:'chip', onclick:openFloorsModal},'⚙️ Etagen'));
+}
+function openFloorsModal(){
+  const wrap = el('div',{});
+  for(const f of state.floors){
+    const inp = el('input',{type:'text', value:f.name, style:'flex:2'});
+    inp.addEventListener('change', ()=>{
+      const v = inp.value.trim();
+      if(v){ f.name = v; save(); renderRooms(); toast('Etage umbenannt.'); }
+    });
+    const resCount = state.rooms.filter(r=>r.floor===f.id).length;
+    const row = el('div',{class:'form-row', style:'margin-bottom:8px; align-items:center'},
+      inp,
+      el('button',{class:'btn ghost small', type:'button', onclick:()=>{
+        $('#floorBgFile').dataset.floor = f.id;
+        $('#floorBgFile').click();
+      }}, f.bg ? '🖼️ Bild ersetzen' : '🖼️ Grundriss-Bild'),
+      f.bg ? el('button',{class:'btn small danger', type:'button', onclick:()=>{
+        f.bg = null; save(); renderRooms(); openFloorsModal(); toast('Grundriss-Bild entfernt.');
+      }},'Bild ✕') : null,
+      el('button',{class:'icon-btn','aria-label':'Etage löschen', onclick:()=>{
+        if(state.floors.length<2){ toast('Die letzte Etage kann nicht gelöscht werden.'); return; }
+        if(resCount){ toast(`Auf „${f.name}“ liegen noch ${resCount} Ressourcen – erst verschieben/löschen.`); return; }
+        snapshot();
+        state.floors = state.floors.filter(x=>x.id!==f.id);
+        if(state.activeFloor===f.id) state.activeFloor = state.floors[0].id;
+        save(); renderRooms(); openFloorsModal(); toast(`Etage „${f.name}“ gelöscht.`, true);
+      }},'🗑'));
+    wrap.append(row);
+  }
+  const newInp = el('input',{type:'text', placeholder:'Neue Etage, z. B. 1. OG', autocomplete:'off'});
+  wrap.append(el('form',{class:'form-row', style:'margin-top:12px', onsubmit:e=>{
+    e.preventDefault();
+    const v = newInp.value.trim();
+    if(!v){ toast('Bitte einen Namen eingeben.'); return; }
+    const f = {id:uid(), name:v, bg:null};
+    state.floors.push(f); state.activeFloor = f.id;
+    save(); renderRooms(); openFloorsModal();
+    toast(`Etage „${v}“ angelegt.`);
+  }}, el('div',{class:'grow'}, newInp), el('button',{class:'btn ghost', type:'submit'},'＋ Etage')));
+  openModal(
+    modalHead('🏢 Etagen verwalten'),
+    el('p',{class:'sub', style:'margin-bottom:12px'},'Umbenennen direkt im Feld. Pro Etage kannst du ein Foto/Scan deines Grundrisses hinterlegen.'),
+    wrap);
+}
+$('#floorBgFile').addEventListener('change', e=>{
+  const f = e.target.files[0];
+  const floorId = e.target.dataset.floor;
+  e.target.value = '';
+  if(!f || !floorId) return;
+  const floor = state.floors.find(x=>x.id===floorId);
+  if(!floor) return;
+  const img = new Image();
+  img.onload = ()=>{
+    const max = 1400;
+    const sc = Math.min(1, max/Math.max(img.width, img.height));
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(img.width*sc); cv.height = Math.round(img.height*sc);
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    try{
+      floor.bg = cv.toDataURL('image/jpeg', 0.72);
+      save(); renderRooms(); closeModal();
+      toast(`Grundriss für „${floor.name}“ hinterlegt. 🗺️`);
+    }catch(err){ toast('Bild konnte nicht gespeichert werden.'); }
+    URL.revokeObjectURL(img.src);
+  };
+  img.onerror = ()=> toast('Bild konnte nicht gelesen werden.');
+  img.src = URL.createObjectURL(f);
+});
+
+function renderRooms(){
+  $('#bookDate').value = bookDate;
+  $('#bookDateLabel').textContent = weekdayName(bookDate);
+  $('#modeDay').classList.toggle('active', !weekMode);
+  $('#modeWeek').classList.toggle('active', weekMode);
+  renderFloorChips();
+
+  $('#planCard').style.display = weekMode ? 'none' : '';
+  $('#deskCard').style.display = weekMode ? 'none' : '';
+  $('#weekCard').style.display = weekMode ? '' : 'none';
+  const wrap = $('#meetingRooms'); wrap.innerHTML = '';
+
+  if(weekMode){
+    renderWeek();
+  }else{
+    const meetRooms = state.rooms.filter(r=>r.type==='meeting' && r.floor===state.activeFloor);
+    if(!meetRooms.length){
+      wrap.append(el('div',{class:'card'},
+        el('div',{class:'empty'},'Keine Meetingräume auf dieser Etage – unten unter „Ressourcen verwalten" anlegen.')));
+    }
+    for(const room of meetRooms){
+      const dayBookings = state.bookings
+        .filter(b=>b.roomId===room.id && b.date===bookDate && b.start)
+        .sort((a,b)=> a.start<b.start ? -1 : 1);
+      const occ = el('div',{class:'occupancy'});
+      for(const b of dayBookings){
+        const left = (timeToMin(b.start)-DAY_START)/(DAY_END-DAY_START)*100;
+        const width = (timeToMin(b.end)-timeToMin(b.start))/(DAY_END-DAY_START)*100;
+        occ.append(el('div',{class:'block', style:`left:${left}%;width:${width}%`, title:`${b.start}–${b.end} ${b.title}`}));
+      }
+      const ul = el('ul',{class:'rows'});
+      for(const b of dayBookings) ul.append(bookingRow(b));
+      if(!dayBookings.length) ul.append(el('li',{}, el('span',{class:'row-meta'},'Frei – noch keine Buchung an diesem Tag.')));
+      wrap.append(el('div',{class:'card'},
+        el('div',{class:'room-head'},
+          el('h3',{},'🗣️ '+room.name),
+          el('span',{class:'badge neutral'}, room.capacity+' Plätze')),
+        occ,
+        el('div',{class:'occ-scale'}, el('span',{},'07:00'), el('span',{},'13:30'), el('span',{},'20:00')),
+        ul, bookingFormRow(room)));
+    }
+
+    /* Arbeitsplätze */
+    const desks = state.rooms.filter(r=>r.type==='desk' && r.floor===state.activeFloor);
+    const grid = $('#deskGrid'); grid.innerHTML = '';
+    $('#deskEmpty').style.display = desks.length ? 'none' : '';
+    $('#deskForm').style.display = desks.length ? '' : 'none';
+    const sel = $('#deskSelect'); sel.innerHTML = '';
+    for(const d of desks){
+      const booking = state.bookings.find(b=>b.roomId===d.id && b.date===bookDate && !b.start);
+      const card = el('div',{class:'desk '+(booking?'taken':'free')},
+        el('div',{class:'d-ico'}, booking?'👤':'🖥️'),
+        el('div',{class:'d-name'}, d.name),
+        el('div',{class:'d-status'}, booking ? booking.person : 'Frei'));
+      if(booking){
+        card.append(el('button',{class:'icon-btn','aria-label':'Platzbuchung löschen', onclick:()=>{
+          snapshot();
+          state.bookings = state.bookings.filter(x=>x.id!==booking.id);
+          save(); renderAll(); toast('Platzbuchung gelöscht.', true);
+        }},'🗑'));
+      }else{
+        sel.append(el('option',{value:d.id}, d.name));
+      }
+      grid.append(card);
+    }
+    if(!sel.children.length){
+      sel.append(el('option',{value:''},'Alle Plätze belegt'));
+      sel.disabled = true;
+    }else sel.disabled = false;
+
+    renderPlan();
+  }
+
+  /* Ressourcen-Liste (alle Etagen) */
+  const rl = $('#resList'); rl.innerHTML = '';
+  for(const r of state.rooms){
+    const floor = state.floors.find(f=>f.id===r.floor);
+    rl.append(el('li',{},
+      el('span',{}, r.type==='meeting'?'🗣️':'🖥️'),
+      el('div',{class:'row-main'},
+        el('div',{class:'row-title'}, r.name),
+        el('div',{class:'row-meta'},
+          el('span',{}, r.type==='meeting' ? `Meetingraum · ${r.capacity} Plätze` : 'Arbeitsplatz'),
+          el('span',{},'🏢 '+(floor?floor.name:'?')))),
+      el('button',{class:'icon-btn blue','aria-label':'Ressource bearbeiten', onclick:()=>openResourceEditModal(r)},'✏️'),
+      el('button',{class:'icon-btn','aria-label':'Ressource löschen', onclick:()=>{
+        snapshot();
+        state.rooms = state.rooms.filter(x=>x.id!==r.id);
+        state.bookings = state.bookings.filter(b=>b.roomId!==r.id);
+        save(); renderAll(); toast(`„${r.name}“ samt Buchungen gelöscht.`, true);
+      }},'🗑')
+    ));
+  }
+}
+$('#deskForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const deskId = $('#deskSelect').value;
+  const person = $('#deskPerson').value.trim();
+  if(!deskId){ toast('Alle Plätze sind an diesem Tag belegt.'); return; }
+  if(!person){ toast('Bitte eintragen, wer den Platz nutzt.'); return; }
+  state.bookings.push({id:uid(), roomId:deskId, date:bookDate, person});
+  save(); renderAll();
+  $('#deskPerson').value = '';
+  toast(`Platz für ${person} gebucht. ✅`);
+});
+$('#resForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const name = $('#resName').value.trim();
+  const type = $('#resType').value;
+  if(!name){ toast('Bitte einen Namen für die Ressource eingeben.'); return; }
+  const cap = type==='meeting' ? Math.max(1, parseInt($('#resCap').value,10) || 4) : 1;
+  state.rooms.push({id:uid(), name, type, capacity:cap, floor:state.activeFloor});
+  save(); renderAll();
+  $('#resName').value=''; $('#resCap').value='';
+  toast(`„${name}“ angelegt.`);
+});
+function openResourceEditModal(r){
+  const inName = el('input',{type:'text', value:r.name, autocomplete:'off'});
+  const selFloor = el('select',{});
+  for(const f of state.floors){
+    const o = el('option',{value:f.id}, f.name);
+    if(f.id===r.floor) o.selected = true;
+    selFloor.append(o);
+  }
+  const inCap = el('input',{type:'number', value:r.capacity, min:'1', max:'99'});
+  openModal(
+    modalHead('✏️ '+(r.type==='meeting'?'Meetingraum':'Arbeitsplatz')+' bearbeiten'),
+    el('form',{onsubmit:e=>{
+      e.preventDefault();
+      const v = inName.value.trim();
+      if(!v){ toast('Bitte einen Namen eingeben.'); return; }
+      r.name = v;
+      r.floor = selFloor.value;
+      if(r.type==='meeting') r.capacity = Math.max(1, parseInt(inCap.value,10)||r.capacity);
+      save(); renderAll(); closeModal();
+      toast('Gespeichert – Buchungen bleiben erhalten. ✅');
+    }},
+      el('div',{class:'form-row', style:'margin-bottom:8px'},
+        el('div',{class:'grow'}, el('label',{class:'field-lbl'},'Name'), inName)),
+      el('div',{class:'form-row', style:'margin-bottom:12px'},
+        el('div',{}, el('label',{class:'field-lbl'},'Etage'), selFloor),
+        r.type==='meeting' ? el('div',{}, el('label',{class:'field-lbl'},'Plätze'), inCap) : null),
+      el('button',{class:'btn', type:'submit'},'Speichern')));
+}
+
+/* ---------- Lageplan ---------- */
+let planEdit = false;
+const planEls = {};
+$('#planEditBtn').addEventListener('click', ()=>{
+  planEdit = !planEdit;
+  $('#planEditBtn').textContent = planEdit ? '✅ Fertig' : '✏️ Anordnen';
+  $('#floorplan').classList.toggle('edit', planEdit);
+  $('#planHint').textContent = planEdit
+    ? 'Ziehe Räume und Plätze an ihre Position. Meetingräume lassen sich an der blauen Ecke unten rechts in der Größe ändern. Danach „Fertig" drücken.'
+    : 'Klicke im Plan auf einen Platz oder Raum, um direkt zu buchen. Mit „Anordnen" ziehst du alles an seinen echten Platz im Büro – Räume lassen sich unten rechts größer ziehen. Über „⚙️ Etagen" legst du weitere Etagen an und hinterlegst ein Grundriss-Foto.';
+});
+function ensurePlanPositions(){
+  let changed = false, ri = 0, di = 0;
+  for(const r of state.rooms){
+    if(r.plan){ continue; }
+    if(r.type==='meeting'){
+      r.plan = {x: 3 + (ri%3)*33, y: 5 + Math.floor(ri/3)*36, w: 29, h: 32};
+      ri++;
+    }else{
+      r.plan = {x: 3 + (di%7)*13.5, y: Math.max(2, 72 - Math.floor(di/7)*26), w: 12, h: 23};
+      di++;
+    }
+    changed = true;
+  }
+  if(changed) save();
+}
+function positionPlanEl(elm, p){
+  elm.style.left = p.x+'%'; elm.style.top = p.y+'%';
+  elm.style.width = p.w+'%'; elm.style.height = p.h+'%';
+}
+function renderPlan(){
+  ensurePlanPositions();
+  const fp = $('#floorplan'); fp.innerHTML = '';
+  const floor = state.floors.find(f=>f.id===state.activeFloor);
+  if(floor && floor.bg){
+    fp.classList.add('hasbg');
+    const overlay = document.documentElement.dataset.theme==='dark'
+      ? 'linear-gradient(rgba(10,18,34,.55), rgba(10,18,34,.55))'
+      : 'linear-gradient(rgba(255,255,255,.5), rgba(255,255,255,.5))';
+    fp.style.backgroundImage = `${overlay}, url(${floor.bg})`;
+  }else{
+    fp.classList.remove('hasbg');
+    fp.style.backgroundImage = '';
+  }
+  for(const r of state.rooms){
+    if(r.floor !== state.activeFloor) continue;
+    let cls, ico, sub;
+    if(r.type==='meeting'){
+      const n = state.bookings.filter(b=>b.roomId===r.id && b.date===bookDate && b.start).length;
+      cls = 'plan-el room'; ico = '🗣️';
+      sub = n ? `${n} Termin${n>1?'e':''}` : 'frei';
+    }else{
+      const bk = state.bookings.find(b=>b.roomId===r.id && b.date===bookDate && !b.start);
+      cls = 'plan-el desk' + (bk?' taken':''); ico = bk?'👤':'🖥️';
+      sub = bk ? bk.person : 'frei';
+    }
+    const elm = el('div',{class:cls, title:r.name},
+      el('span',{class:'pe-ico'}, ico),
+      el('span',{}, r.name),
+      el('span',{class:'pe-sub'}, sub));
+    if(r.type==='meeting'){
+      elm.append(el('div',{class:'rs-handle', onpointerdown:e=>planDragStart(e, r, 'resize')}));
+    }
+    elm.addEventListener('pointerdown', e=>planDragStart(e, r, 'move'));
+    elm.addEventListener('click', ()=>{ if(!planEdit) openResourceModal(r); });
+    positionPlanEl(elm, r.plan);
+    planEls[r.id] = elm;
+    fp.append(elm);
+  }
+}
+let dragCtx = null;
+function planDragStart(e, r, mode){
+  if(!planEdit) return;
+  e.preventDefault(); e.stopPropagation();
+  const rect = $('#floorplan').getBoundingClientRect();
+  dragCtx = {r, mode, rect, sx:e.clientX, sy:e.clientY, orig:{...r.plan}};
+}
+window.addEventListener('pointermove', e=>{
+  if(!dragCtx) return;
+  const {r, mode, rect, sx, sy, orig} = dragCtx;
+  const dx = (e.clientX - sx)/rect.width*100;
+  const dy = (e.clientY - sy)/rect.height*100;
+  if(mode==='move'){
+    r.plan.x = Math.min(100 - r.plan.w, Math.max(0, orig.x + dx));
+    r.plan.y = Math.min(100 - r.plan.h, Math.max(0, orig.y + dy));
+  }else{
+    r.plan.w = Math.min(100 - r.plan.x, Math.max(9, orig.w + dx));
+    r.plan.h = Math.min(100 - r.plan.y, Math.max(12, orig.h + dy));
+  }
+  const elm = planEls[r.id];
+  if(elm) positionPlanEl(elm, r.plan);
+});
+window.addEventListener('pointerup', ()=>{
+  if(!dragCtx) return;
+  const p = dragCtx.r.plan;
+  p.x = Math.round(p.x*2)/2; p.y = Math.round(p.y*2)/2;
+  p.w = Math.round(p.w*2)/2; p.h = Math.round(p.h*2)/2;
+  dragCtx = null;
+  save();
+});
+
+/* ---------- Mini-Modal ---------- */
+function openModal(...content){
+  const m = $('#miniModal'); m.innerHTML = '';
+  m.append(...content);
+  m.classList.add('show'); $('#modalBack').classList.add('show');
+}
+function closeModal(){
+  $('#miniModal').classList.remove('show');
+  $('#modalBack').classList.remove('show');
+}
+$('#modalBack').addEventListener('click', closeModal);
+window.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+function modalHead(txt){
+  return el('h3',{}, txt, el('button',{class:'close-x', onclick:closeModal, 'aria-label':'Schließen'},'✕'));
+}
+function openResourceModal(r){
+  if(r.type==='desk') openDeskModal(r); else openRoomModal(r);
+}
+function openDeskModal(d){
+  const bk = state.bookings.find(b=>b.roomId===d.id && b.date===bookDate && !b.start);
+  if(bk){
+    openModal(
+      modalHead('🖥️ '+d.name),
+      el('p',{class:'sub', style:'margin-bottom:12px'}, `${weekdayName(bookDate)}, ${fmtDate(bookDate)} · belegt von ${bk.person}`),
+      el('button',{class:'btn danger', onclick:()=>{
+        snapshot();
+        state.bookings = state.bookings.filter(x=>x.id!==bk.id);
+        save(); renderAll(); closeModal(); toast('Platzbuchung gelöscht.', true);
+      }},'Buchung löschen'));
+  }else{
+    const inp = el('input',{type:'text', placeholder:'Wer sitzt dort?', autocomplete:'off'});
+    openModal(
+      modalHead('🖥️ '+d.name),
+      el('p',{class:'sub', style:'margin-bottom:12px'}, `${weekdayName(bookDate)}, ${fmtDate(bookDate)} · frei`),
+      el('form',{class:'form-row', onsubmit:e=>{
+        e.preventDefault();
+        const person = inp.value.trim();
+        if(!person){ toast('Bitte einen Namen eintragen.'); return; }
+        state.bookings.push({id:uid(), roomId:d.id, date:bookDate, person});
+        save(); renderAll(); closeModal();
+        toast(`${d.name} für ${person} gebucht. ✅`);
+      }},
+        el('div',{class:'grow'}, inp),
+        el('button',{class:'btn', type:'submit'},'Buchen')));
+    setTimeout(()=>inp.focus(), 60);
+  }
+}
+function openRoomModal(room){
+  const dayB = state.bookings
+    .filter(b=>b.roomId===room.id && b.date===bookDate && b.start)
+    .sort((a,b)=> a.start<b.start ? -1 : 1);
+  const ul = el('ul',{class:'rows'});
+  for(const b of dayB){
+    ul.append(el('li',{},
+      el('span',{class:'badge neutral'}, `${b.start}–${b.end}`),
+      el('div',{class:'row-main'},
+        el('div',{class:'row-title'}, b.title + (b.seriesId?' 🔁':'')),
+        b.person ? el('div',{class:'row-meta'}, el('span',{},'👤 '+b.person)) : null),
+      el('button',{class:'icon-btn','aria-label':'Buchung löschen', onclick:()=>{ closeModal(); confirmDeleteBooking(b); }},'🗑')));
+  }
+  if(!dayB.length) ul.append(el('li',{}, el('span',{class:'row-meta'},'Ganztägig frei. 🎉')));
+  openModal(
+    modalHead('🗣️ '+room.name),
+    el('p',{class:'sub', style:'margin-bottom:10px'}, `${weekdayName(bookDate)}, ${fmtDate(bookDate)} · ${room.capacity} Plätze`),
+    ul,
+    bookingFormRow(room, {onDone: closeModal}));
+}
+
+/* ================= Smart Office ================= */
+async function shellyCmd(d, turnOn){
+  d.lastState = turnOn; save(); renderAll();
+  const url = d.gen==='gen1'
+    ? `http://${d.ip}/relay/0?turn=${turnOn?'on':'off'}`
+    : `http://${d.ip}/rpc/Switch.Set?id=0&on=${turnOn}`;
+  try{
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), 3500);
+    await fetch(url, {mode:'no-cors', signal:ctrl.signal});
+    clearTimeout(t);
+    toast(`💡 ${d.name} ${turnOn?'eingeschaltet':'ausgeschaltet'}.`);
+  }catch(err){
+    toast(`${d.name} (${d.ip}) nicht erreichbar – gleiches WLAN?`);
+  }
+}
+function nukiCmd(door, action, label){
+  if(!door.bridgeIp || !door.token || !door.nukiId){
+    toast('Diese Tür ist unvollständig konfiguriert.');
+    return;
+  }
+  const url = `http://${door.bridgeIp}:8080/lockAction?nukiId=${encodeURIComponent(door.nukiId)}&action=${action}&token=${encodeURIComponent(door.token)}`;
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), 4000);
+  fetch(url, {mode:'no-cors', signal:ctrl.signal})
+    .then(()=>{ clearTimeout(t); toast(`🚪 ${label} – Befehl an Nuki gesendet.`); })
+    .catch(()=> toast(`Nuki-Bridge (${door.bridgeIp}) nicht erreichbar – gleiches WLAN?`));
+}
+function openNukiEditModal(n){
+  const inName = el('input',{type:'text', value:n.name});
+  const inBridge = el('input',{type:'text', value:n.bridgeIp});
+  const inToken = el('input',{type:'password', value:n.token});
+  const inId = el('input',{type:'text', value:n.nukiId});
+  openModal(
+    modalHead('✏️ Tür bearbeiten'),
+    el('form',{onsubmit:e=>{
+      e.preventDefault();
+      n.name = inName.value.trim() || n.name;
+      n.bridgeIp = inBridge.value.trim();
+      n.token = inToken.value.trim();
+      n.nukiId = inId.value.trim();
+      save(); renderAll(); closeModal(); toast('Tür gespeichert.');
+    }},
+      el('div',{class:'form-row', style:'margin-bottom:8px'},
+        el('div',{}, el('label',{class:'field-lbl'},'Name'), inName),
+        el('div',{}, el('label',{class:'field-lbl'},'Bridge-IP'), inBridge)),
+      el('div',{class:'form-row', style:'margin-bottom:12px'},
+        el('div',{}, el('label',{class:'field-lbl'},'API-Token'), inToken),
+        el('div',{}, el('label',{class:'field-lbl'},'Nuki-ID'), inId)),
+      el('button',{class:'btn', type:'submit'},'Speichern')));
+}
+function renderSmart(){
+  const ul = $('#shellyList'); ul.innerHTML = '';
+  $('#shellyEmpty').style.display = state.shellys.length ? 'none' : '';
+  for(const d of state.shellys){
+    ul.append(el('li',{},
+      el('span',{style:'font-size:20px'},'💡'),
+      el('div',{class:'row-main'},
+        el('div',{class:'row-title'}, d.name),
+        el('div',{class:'row-meta'}, el('span',{}, d.ip), el('span',{}, d.gen==='gen1'?'Gen 1':'Gen 2+'))),
+      el('button',{class:'switch'+(d.lastState?' on':''), 'aria-label':`${d.name} schalten`,
+        onclick:()=>shellyCmd(d, !d.lastState)}),
+      el('button',{class:'icon-btn','aria-label':'Gerät entfernen', onclick:()=>{
+        snapshot();
+        state.shellys = state.shellys.filter(x=>x.id!==d.id);
+        save(); renderAll(); toast(`„${d.name}“ entfernt.`, true);
+      }},'🗑')
+    ));
+  }
+  const nl = $('#nukiList'); nl.innerHTML = '';
+  $('#nukiEmpty').style.display = state.nukis.length ? 'none' : '';
+  for(const n of state.nukis){
+    nl.append(el('li',{},
+      el('span',{style:'font-size:20px'},'🚪'),
+      el('div',{class:'row-main'},
+        el('div',{class:'row-title'}, n.name),
+        el('div',{class:'row-meta'}, el('span',{}, 'Bridge '+(n.bridgeIp||'?'))),
+        el('div',{class:'door-row', style:'margin-top:6px'},
+          el('button',{class:'door-btn-sm primary', onclick:()=>nukiCmd(n,3,`${n.name} öffnen`)},'🚪 Öffnen'),
+          el('button',{class:'door-btn-sm', onclick:()=>nukiCmd(n,1,`${n.name} aufschließen`)},'🔓 Aufschließen'),
+          el('button',{class:'door-btn-sm', onclick:()=>nukiCmd(n,2,`${n.name} abschließen`)},'🔒 Abschließen'))),
+      el('button',{class:'icon-btn blue','aria-label':'Tür bearbeiten', onclick:()=>openNukiEditModal(n)},'✏️'),
+      el('button',{class:'icon-btn','aria-label':'Tür entfernen', onclick:()=>{
+        snapshot();
+        state.nukis = state.nukis.filter(x=>x.id!==n.id);
+        save(); renderAll(); toast(`„${n.name}“ entfernt.`, true);
+      }},'🗑')
+    ));
+  }
+}
+$('#shellyForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const err = $('#shellyErr');
+  const name = $('#shellyName').value.trim();
+  const ip = $('#shellyIp').value.trim();
+  if(!name || !ip){ err.textContent='Bitte Name und IP-Adresse angeben.'; err.classList.add('show'); return; }
+  if(!/^[a-zA-Z0-9.\-]+$/.test(ip)){ err.textContent='Das sieht nicht nach einer gültigen IP/Adresse aus.'; err.classList.add('show'); return; }
+  err.classList.remove('show');
+  state.shellys.push({id:uid(), name, ip, gen:$('#shellyGen').value, lastState:false});
+  save();
+  $('#shellyName').value=''; $('#shellyIp').value='';
+  renderAll();
+  toast(`„${name}“ hinzugefügt – Schalter ausprobieren!`);
+});
+$('#nukiForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const err = $('#nukiErr');
+  const name = $('#nukiName').value.trim();
+  const bridgeIp = $('#nukiBridge').value.trim();
+  const token = $('#nukiToken').value.trim();
+  const nukiId = $('#nukiIdInp').value.trim();
+  if(!name || !bridgeIp || !token || !nukiId){
+    err.textContent = 'Bitte Name, Bridge-IP, Token und Nuki-ID ausfüllen.';
+    err.classList.add('show'); return;
+  }
+  err.classList.remove('show');
+  state.nukis.push({id:uid(), name, bridgeIp, token, nukiId});
+  save();
+  $('#nukiName').value=''; $('#nukiBridge').value=''; $('#nukiToken').value=''; $('#nukiIdInp').value='';
+  renderAll();
+  toast(`Tür „${name}“ hinzugefügt. 🚪`);
+});
+
+/* ================= Boot ================= */
+function renderAll(){
+  renderHome(); renderTasks(); renderShopping(); renderMoney(); renderRooms(); renderSmart();
+}
+buildNav();
+applyTheme(theme);
+$('#expDate').value = todayISO();
+initSyncHashes();
+renderSyncUI();
+go('home');
+startSync();
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  navigator.serviceWorker.register('./sw.js')
+    .then(()=>console.log('[OfficeHub] Service Worker registriert – App ist offlinefähig & installierbar'))
+    .catch(err=>console.warn('[OfficeHub] Service Worker nicht registriert:', err));
+}
+</script>
+</body>
+</html>
