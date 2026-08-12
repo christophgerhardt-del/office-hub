@@ -2038,10 +2038,10 @@ async function shellyCmd(d, turnOn){
 function nukiCmd(door, action, label){
   if(door.mode === 'web'){
     if(!door.webToken || !door.smartlockId){ toast('Web-API-Token oder Smartlock-ID fehlt.'); return; }
-    fetch(`https://api.nuki.io/smartlock/${encodeURIComponent(door.smartlockId)}/action`, {
+    fetch(NUKI_PROXY, {
       method:'POST',
-      headers:{Authorization:'Bearer '+door.webToken, 'Content-Type':'application/json'},
-      body: JSON.stringify({action})
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({token:door.webToken, op:'action', smartlockId:door.smartlockId, action})
     }).then(res=>{
       if(res.status===204 || res.ok) toast(`🚪 ${label} – über Nuki-Cloud ausgeführt. ✅`);
       else if(res.status===401 || res.status===403) toast('Nuki Web-API: Token ungültig oder ohne Bedien-Recht.');
@@ -2060,8 +2060,14 @@ function nukiCmd(door, action, label){
     .then(()=>{ clearTimeout(t); toast(`🚪 ${label} – Befehl an Nuki gesendet.`); })
     .catch(()=> toast(`Nuki-Bridge (${door.bridgeIp}) nicht erreichbar – gleiches WLAN?`));
 }
+/* api.nuki.io erlaubt keine Browser-Aufrufe (kein CORS) – schmaler Relay als Supabase Edge Function */
+const NUKI_PROXY = 'https://nocsjyzmnskbyccrjayx.supabase.co/functions/v1/nuki-proxy';
 async function nukiWebLocks(token){
-  const res = await fetch('https://api.nuki.io/smartlock', {headers:{Authorization:'Bearer '+token}});
+  const res = await fetch(NUKI_PROXY, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({token, op:'list'})
+  });
   if(res.status===401 || res.status===403) throw new Error('token');
   if(!res.ok) throw new Error('http'+res.status);
   return res.json();
