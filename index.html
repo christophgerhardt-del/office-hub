@@ -316,6 +316,17 @@
       <div class="qa-row" id="quickActions"></div>
     </div>
 
+    <div class="card" id="teamCard">
+      <h3>👥 Team</h3>
+      <p class="sub" id="teamIdentity" style="margin-bottom:10px"></p>
+      <ul class="rows" id="memberList"></ul>
+      <form id="memberForm" class="form-row" style="margin-top:10px">
+        <input type="text" id="memberName" class="grow" placeholder="Name des Kollegen / der Kollegin" autocomplete="off">
+        <button class="btn ghost" type="submit">＋ Kollege hinzufügen</button>
+      </form>
+      <p class="hint" id="teamHint"></p>
+    </div>
+
     <div class="card">
       <h3>Als Nächstes fällig</h3>
       <ul class="rows" id="homeNextList"></ul>
@@ -378,7 +389,7 @@ create policy "office_kv_all" on office_kv
         </div>
         <div class="form-row">
           <div><label class="field-lbl" for="taskAssignee">Zuständig</label>
-            <input type="text" id="taskAssignee" placeholder="Name (optional)" autocomplete="off"></div>
+            <select id="taskAssignee"></select></div>
           <div><label class="field-lbl" for="taskDue">Fällig am</label>
             <input type="date" id="taskDue"></div>
           <div><label class="field-lbl" for="taskPrio">Priorität</label>
@@ -454,11 +465,7 @@ create policy "office_kv_all" on office_kv
     <div class="card">
       <h3>Personen</h3>
       <div class="people-wrap" id="peopleWrap"></div>
-      <form id="personForm" class="form-row">
-        <input type="text" id="personName" class="grow" placeholder="Name, z. B. Anna" autocomplete="off">
-        <button class="btn ghost" type="submit">＋ Person</button>
-      </form>
-      <div class="err" id="personErr"></div>
+      <p class="hint">Personen = Team-Mitglieder. Hinzufügen und Entfernen kann nur der Admin unter Übersicht → Team.</p>
     </div>
 
     <div class="card">
@@ -554,7 +561,7 @@ create policy "office_kv_all" on office_kv
       <div class="empty" id="deskEmpty" style="display:none">Auf dieser Etage gibt es noch keine Arbeitsplätze – unten unter „Ressourcen verwalten".</div>
       <form id="deskForm" class="form-row">
         <select id="deskSelect"></select>
-        <input type="text" id="deskPerson" placeholder="Wer sitzt dort?" autocomplete="off">
+        <select id="deskPerson"></select>
         <button class="btn" type="submit">Platz buchen</button>
       </form>
     </div>
@@ -632,7 +639,8 @@ const defaults = () => ({
   tasks: [],            // {id,title,assignee,due,prio,repeat,done,createdAt}
   lists: [],            // {id,name,items:[{id,name,qty,done}]}
   activeList: null,
-  people: [],
+  people: [],           // legacy – ersetzt durch members
+  members: [],          // {id,name,role:'admin'|'member',pinHash?}
   expenses: [],         // {id,desc,amount(cents),payer,parts,date}
   settledLog: [],       // {id,date,settlements,expenses}
   floors: [],           // {id,name,bg}
@@ -680,6 +688,10 @@ const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(3
   for(const t of state.tasks){ if(!t.repeat){ t.repeat = 'nie'; ch = true; } }
   if(!state.activeFloor || !state.floors.some(f=>f.id===state.activeFloor)){
     state.activeFloor = state.floors[0].id; ch = true;
+  }
+  if(!state.members.length && state.people.length){
+    state.members = state.people.map(n=>({id:uid(), name:n, role:'member'}));
+    ch = true;
   }
   if(ch) persist();
 })();
@@ -777,7 +789,7 @@ $('#themeBtn').addEventListener('click', ()=>{
 });
 
 /* ================= Team-Sync (Supabase REST) ================= */
-const SYNC_KEYS = ['tasks','lists','people','expenses','settledLog','floors','rooms','bookings','shellys','nukis','itemHistory'];
+const SYNC_KEYS = ['tasks','lists','people','members','expenses','settledLog','floors','rooms','bookings','shellys','nukis','itemHistory'];
 let saveHashes = {}, syncDirty = {}, lastLocalEdit = {}, pushTimer = null, pullTimer = null;
 function hashStr(s){ let h=5381; for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))|0; } return h; }
 const collHash = k => hashStr(JSON.stringify(state[k]));
@@ -863,9 +875,16 @@ function startSync(){
   syncPull();
   pullTimer = setInterval(()=>{ if(document.visibilityState==='visible') syncPull(); }, 8000);
 }
+/* Vorbelegung: abgetrennte office_kv-Tabelle im bestehenden Supabase-Projekt.
+   Der Anon-Key ist ein öffentlicher Client-Schlüssel; der Schutz der Daten
+   liegt im geheimen Büro-Code (unerratbare UUID). */
+const SYNC_DEFAULTS = {
+  url: 'https://nocsjyzmnskbyccrjayx.supabase.co',
+  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vY3NqeXptbnNrYnljY3JqYXl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDI4ODgsImV4cCI6MjA5NzI3ODg4OH0.RnIq-jbr6JKz_Z3etwc2rX1O6RXh5cidwm9mkRFrnw4'
+};
 function renderSyncUI(){
-  $('#syncUrl').value = state.sync.url;
-  $('#syncKey').value = state.sync.key;
+  $('#syncUrl').value = state.sync.url || SYNC_DEFAULTS.url;
+  $('#syncKey').value = state.sync.key || SYNC_DEFAULTS.key;
   $('#syncOffice').value = state.sync.office;
   $('#syncToggle').textContent = state.sync.enabled ? '⏸ Deaktivieren' : '▶️ Aktivieren';
 }
@@ -889,6 +908,165 @@ $('#syncToggle').addEventListener('click', ()=>{
   toast('Team-Sync aktiviert. 🔄');
 });
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && syncReady()) syncPull(); });
+
+/* ================= Team & Admin ================= */
+const IDENTITY_KEY = 'officehub.identity';
+function getIdentity(){
+  try{ return JSON.parse(localStorage.getItem(IDENTITY_KEY) || 'null'); }catch(e){ return null; }
+}
+function setIdentityMember(m){
+  localStorage.setItem(IDENTITY_KEY, JSON.stringify({memberId: m.id}));
+}
+function currentMember(){
+  const id = getIdentity();
+  if(!id) return null;
+  return state.members.find(m=>m.id===id.memberId) || null;
+}
+function isAdmin(){ const m = currentMember(); return !!m && m.role==='admin'; }
+function adminMember(){ return state.members.find(m=>m.role==='admin') || null; }
+const pinHash = (pin, salt) => String(hashStr(salt + ':' + pin));
+function memberNames(){ return state.members.map(m=>m.name); }
+function fillMemberSelect(sel, {empty=null, preselect=null}={}){
+  const cur = sel.value;
+  sel.innerHTML = '';
+  if(empty !== null) sel.append(el('option',{value:''}, empty));
+  for(const m of state.members){
+    const o = el('option',{value:m.name}, m.name);
+    sel.append(o);
+  }
+  const want = cur || preselect;
+  if(want && [...sel.options].some(o=>o.value===want)) sel.value = want;
+}
+
+function openAdminSetupModal(){
+  const inName = el('input',{type:'text', placeholder:'Dein Name, z. B. Christoph', autocomplete:'off', list:'memberNamesDl'});
+  const dl = el('datalist',{id:'memberNamesDl'});
+  for(const m of state.members) dl.append(el('option',{value:m.name}));
+  const p1 = el('input',{type:'password', placeholder:'Admin-PIN (4–8 Zeichen)', autocomplete:'off'});
+  const p2 = el('input',{type:'password', placeholder:'PIN wiederholen', autocomplete:'off'});
+  openModal(
+    modalHead('👑 Admin einrichten'),
+    el('p',{class:'sub', style:'margin-bottom:12px'},'Dieses Büro hat noch keinen Admin. Lege dein Profil an – nur der Admin kann später Kollegen hinzufügen oder entfernen.'),
+    el('form',{onsubmit:e=>{
+      e.preventDefault();
+      const name = inName.value.trim();
+      if(!name){ toast('Bitte deinen Namen eingeben.'); return; }
+      if(p1.value.length < 4 || p1.value.length > 8){ toast('Die PIN braucht 4–8 Zeichen.'); return; }
+      if(p1.value !== p2.value){ toast('Die PINs stimmen nicht überein.'); return; }
+      let m = state.members.find(x=>x.name.toLowerCase()===name.toLowerCase());
+      if(!m){ m = {id:uid(), name, role:'admin'}; state.members.push(m); }
+      m.role = 'admin';
+      m.pinHash = pinHash(p1.value, m.id);
+      setIdentityMember(m);
+      save(); renderAll(); closeModal();
+      toast(`Willkommen, ${m.name} – du bist Admin. 👑`);
+    }},
+      dl,
+      el('div',{class:'form-row', style:'margin-bottom:8px'}, el('div',{class:'grow'}, inName)),
+      el('div',{class:'form-row', style:'margin-bottom:12px'}, p1, p2),
+      el('button',{class:'btn', type:'submit'},'Admin-Profil anlegen')));
+  setTimeout(()=>inName.focus(), 60);
+}
+function openPinModal(m, onOk){
+  const inp = el('input',{type:'password', placeholder:'Admin-PIN', autocomplete:'off'});
+  openModal(
+    modalHead('🔐 '+m.name),
+    el('p',{class:'sub', style:'margin-bottom:12px'},'Dieses Profil ist mit einer PIN geschützt.'),
+    el('form',{class:'form-row', onsubmit:e=>{
+      e.preventDefault();
+      if(pinHash(inp.value, m.id) !== m.pinHash){ toast('Falsche PIN.'); return; }
+      closeModal(); onOk();
+    }},
+      el('div',{class:'grow'}, inp),
+      el('button',{class:'btn', type:'submit'},'Bestätigen')));
+  setTimeout(()=>inp.focus(), 60);
+}
+function openProfileModal(){
+  const wrap = el('div',{});
+  for(const m of state.members){
+    wrap.append(el('button',{class:'qa-btn', style:'width:100%; margin-bottom:8px; justify-content:flex-start', onclick:()=>{
+      if(m.role==='admin'){
+        openPinModal(m, ()=>{ setIdentityMember(m); renderAll(); toast(`Angemeldet als ${m.name} (Admin). 👑`); });
+      }else{
+        setIdentityMember(m); closeModal(); renderAll(); toast(`Angemeldet als ${m.name}.`);
+      }
+    }}, m.role==='admin' ? '👑 ' : '👤 ', m.name, m.role==='admin' ? ' (Admin)' : ''));
+  }
+  openModal(
+    modalHead('👥 Wer bist du?'),
+    el('p',{class:'sub', style:'margin-bottom:12px'},'Wähle dein Profil auf diesem Gerät. Das Admin-Profil ist PIN-geschützt.'),
+    wrap);
+}
+function openPinChangeModal(){
+  if(!isAdmin()){ toast('Nur der Admin kann die PIN ändern.'); return; }
+  const m = currentMember();
+  const p1 = el('input',{type:'password', placeholder:'Neue PIN (4–8 Zeichen)', autocomplete:'off'});
+  const p2 = el('input',{type:'password', placeholder:'PIN wiederholen', autocomplete:'off'});
+  openModal(
+    modalHead('🔐 Admin-PIN ändern'),
+    el('form',{onsubmit:e=>{
+      e.preventDefault();
+      if(p1.value.length < 4 || p1.value.length > 8){ toast('Die PIN braucht 4–8 Zeichen.'); return; }
+      if(p1.value !== p2.value){ toast('Die PINs stimmen nicht überein.'); return; }
+      m.pinHash = pinHash(p1.value, m.id);
+      save(); closeModal(); toast('Admin-PIN geändert. 🔐');
+    }},
+      el('div',{class:'form-row', style:'margin-bottom:12px'}, p1, p2),
+      el('button',{class:'btn', type:'submit'},'Speichern')));
+  setTimeout(()=>p1.focus(), 60);
+}
+function renderTeam(){
+  const me = currentMember();
+  const admin = adminMember();
+  const idLine = $('#teamIdentity'); idLine.innerHTML = '';
+  if(me){
+    idLine.append(
+      'Angemeldet als ', el('b',{}, me.name), me.role==='admin' ? ' 👑 (Admin) ' : ' ',
+      el('button',{class:'btn ghost small', style:'margin-left:8px', onclick:openProfileModal},'Profil wechseln'));
+    if(me.role==='admin'){
+      idLine.append(' ', el('button',{class:'btn ghost small', onclick:openPinChangeModal},'PIN ändern'));
+    }
+  }else{
+    idLine.append(
+      'Noch kein Profil gewählt. ',
+      el('button',{class:'btn small', onclick:()=> admin ? openProfileModal() : openAdminSetupModal()}, admin ? 'Profil wählen' : 'Admin einrichten'));
+  }
+  const ul = $('#memberList'); ul.innerHTML = '';
+  for(const m of state.members){
+    const row = el('li',{},
+      el('span',{style:'font-size:18px'}, m.role==='admin' ? '👑' : '👤'),
+      el('div',{class:'row-main'}, el('div',{class:'row-title'}, m.name)),
+      el('span',{class:'badge '+(m.role==='admin'?'hoch':'neutral')}, m.role==='admin' ? 'Admin' : 'Mitglied'));
+    if(isAdmin() && m.role!=='admin'){
+      row.append(el('button',{class:'icon-btn','aria-label':`${m.name} entfernen`, onclick:()=>{
+        const used = state.expenses.some(x=>x.payer===m.name || x.parts.includes(m.name));
+        if(used){ toast(`„${m.name}“ ist in offenen Ausgaben enthalten – erst quitt stellen.`); return; }
+        snapshot();
+        state.members = state.members.filter(x=>x.id!==m.id);
+        save(); renderAll(); toast(`„${m.name}“ entfernt.`, true);
+      }},'🗑'));
+    }
+    ul.append(row);
+  }
+  if(!state.members.length){
+    ul.append(el('li',{}, el('span',{class:'row-meta'},'Noch keine Mitglieder.')));
+  }
+  $('#memberForm').style.display = isAdmin() ? '' : 'none';
+  $('#teamHint').textContent = isAdmin()
+    ? 'Nur du als Admin kannst Kollegen hinzufügen oder entfernen. Kollegen wählen auf ihrem Gerät einfach ihr Profil.'
+    : admin ? `Kollegen hinzufügen kann nur der Admin (${admin.name}).` : '';
+}
+$('#memberForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  if(!isAdmin()){ toast('Nur der Admin kann Kollegen hinzufügen.'); return; }
+  const name = $('#memberName').value.trim();
+  if(!name){ toast('Bitte einen Namen eingeben.'); return; }
+  if(state.members.some(m=>m.name.toLowerCase()===name.toLowerCase())){ toast(`„${name}“ gibt es schon.`); return; }
+  state.members.push({id:uid(), name, role:'member'});
+  save(); renderAll();
+  $('#memberName').value = '';
+  toast(`„${name}“ zum Team hinzugefügt. 👥`);
+});
 
 /* ================= Navigation ================= */
 const VIEWS = [
@@ -950,6 +1128,7 @@ function renderHome(){
     }
   }
   $('#quickCard').style.display = qa.children.length ? '' : 'none';
+  renderTeam();
 }
 
 /* Backup */
@@ -1032,6 +1211,7 @@ function taskRow(t, compact){
   );
 }
 function renderTasks(){
+  fillMemberSelect($('#taskAssignee'), {empty:'– niemand –'});
   const list = $('#taskList'); list.innerHTML = '';
   let items = state.tasks.slice();
   if(taskFilter==='offen') items = items.filter(t=>!t.done);
@@ -1149,43 +1329,22 @@ $('#deleteList').addEventListener('click', ()=>{
 /* ================= Finanzen ================= */
 function renderPeople(){
   const wrap = $('#peopleWrap'); wrap.innerHTML = '';
-  for(const p of state.people){
-    wrap.append(el('span',{class:'person-chip'}, p,
-      el('button',{'aria-label':`${p} entfernen`, onclick:()=>removePerson(p)},'✕')));
+  for(const m of state.members){
+    wrap.append(el('span',{class:'person-chip'}, m.role==='admin' ? '👑 ' : '', m.name));
   }
-  if(!state.people.length){
-    wrap.append(el('span',{class:'row-meta'},'Noch keine Personen – füge unten mindestens zwei hinzu.'));
+  if(!state.members.length){
+    wrap.append(el('span',{class:'row-meta'},'Noch keine Mitglieder – der Admin legt sie unter Übersicht → Team an.'));
   }
-  const sel = $('#expPayer'); sel.innerHTML = '';
-  for(const p of state.people) sel.append(el('option',{value:p},p));
+  const sel = $('#expPayer');
+  fillMemberSelect(sel, {preselect: currentMember()?.name || null});
   const boxes = $('#partBoxes'); boxes.innerHTML = '';
-  for(const p of state.people){
-    const cb = el('input',{type:'checkbox', value:p, checked:''});
-    const lab = el('label',{class:'on'}, cb, p);
+  for(const m of state.members){
+    const cb = el('input',{type:'checkbox', value:m.name, checked:''});
+    const lab = el('label',{class:'on'}, cb, m.name);
     cb.addEventListener('change', ()=> lab.classList.toggle('on', cb.checked));
     boxes.append(lab);
   }
 }
-function removePerson(name){
-  const used = state.expenses.some(x=>x.payer===name || x.parts.includes(name));
-  if(used){ toast(`„${name}“ ist in Ausgaben enthalten und kann nicht entfernt werden.`); return; }
-  snapshot();
-  state.people = state.people.filter(p=>p!==name);
-  save(); renderAll(); toast(`„${name}“ entfernt.`, true);
-}
-$('#personForm').addEventListener('submit', e=>{
-  e.preventDefault();
-  const err = $('#personErr');
-  const name = $('#personName').value.trim();
-  if(!name){ err.textContent='Bitte einen Namen eingeben.'; err.classList.add('show'); return; }
-  if(state.people.some(p=>p.toLowerCase()===name.toLowerCase())){
-    err.textContent = `„${name}“ gibt es schon.`; err.classList.add('show'); return;
-  }
-  err.classList.remove('show');
-  state.people.push(name); save();
-  $('#personName').value='';
-  renderAll();
-});
 $('#expenseForm').addEventListener('submit', e=>{
   e.preventDefault();
   const err = $('#expErr');
@@ -1193,7 +1352,7 @@ $('#expenseForm').addEventListener('submit', e=>{
   const cents = parseAmount($('#expAmount').value);
   const payer = $('#expPayer').value;
   const parts = [...document.querySelectorAll('#partBoxes input:checked')].map(c=>c.value);
-  if(state.people.length < 2){ err.textContent='Füge zuerst mindestens zwei Personen hinzu.'; err.classList.add('show'); return; }
+  if(state.members.length < 2){ err.textContent='Das Team braucht mindestens zwei Mitglieder (Übersicht → Team).'; err.classList.add('show'); return; }
   if(!desc){ err.textContent='Bitte eine Beschreibung eingeben.'; err.classList.add('show'); return; }
   if(cents === null){ err.textContent='Bitte einen gültigen Betrag eingeben (z. B. 42,50).'; err.classList.add('show'); return; }
   if(!parts.length){ err.textContent='Bitte mindestens eine Person zum Aufteilen wählen.'; err.classList.add('show'); return; }
@@ -1206,7 +1365,7 @@ $('#expenseForm').addEventListener('submit', e=>{
 });
 function computeBalances(){
   const net = {};
-  for(const p of state.people) net[p] = 0;
+  for(const p of memberNames()) net[p] = 0;
   for(const x of state.expenses){
     if(!(x.payer in net)) net[x.payer] = 0;
     net[x.payer] += x.amount;
@@ -1386,7 +1545,7 @@ function confirmDeleteBooking(b){
 }
 function bookingFormRow(room, opts = {}){
   const inTitle = el('input',{type:'text', placeholder:'Termin, z. B. Teammeeting', autocomplete:'off'});
-  const inPerson = el('input',{type:'text', placeholder:'Gebucht von', autocomplete:'off'});
+  const inPerson = el('input',{type:'text', placeholder:'Gebucht von', autocomplete:'off', value: currentMember()?.name || ''});
   const selStart = timeSelect('09:00');
   const selEnd = timeSelect('10:00');
   const selRep = repeatSelect();
@@ -1599,6 +1758,7 @@ function renderRooms(){
       sel.append(el('option',{value:''},'Alle Plätze belegt'));
       sel.disabled = true;
     }else sel.disabled = false;
+    fillMemberSelect($('#deskPerson'), {preselect: currentMember()?.name || null});
 
     renderPlan();
   }
@@ -1806,21 +1966,21 @@ function openDeskModal(d){
         save(); renderAll(); closeModal(); toast('Platzbuchung gelöscht.', true);
       }},'Buchung löschen'));
   }else{
-    const inp = el('input',{type:'text', placeholder:'Wer sitzt dort?', autocomplete:'off'});
+    const inp = el('select',{});
+    fillMemberSelect(inp, {preselect: currentMember()?.name || null});
     openModal(
       modalHead('🖥️ '+d.name),
       el('p',{class:'sub', style:'margin-bottom:12px'}, `${weekdayName(bookDate)}, ${fmtDate(bookDate)} · frei`),
       el('form',{class:'form-row', onsubmit:e=>{
         e.preventDefault();
         const person = inp.value.trim();
-        if(!person){ toast('Bitte einen Namen eintragen.'); return; }
+        if(!person){ toast('Bitte ein Team-Mitglied wählen.'); return; }
         state.bookings.push({id:uid(), roomId:d.id, date:bookDate, person});
         save(); renderAll(); closeModal();
         toast(`${d.name} für ${person} gebucht. ✅`);
       }},
         el('div',{class:'grow'}, inp),
         el('button',{class:'btn', type:'submit'},'Buchen')));
-    setTimeout(()=>inp.focus(), 60);
   }
 }
 function openRoomModal(room){
@@ -1978,6 +2138,8 @@ initSyncHashes();
 renderSyncUI();
 go('home');
 startSync();
+if(!adminMember()) openAdminSetupModal();
+else if(!currentMember()) openProfileModal();
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   navigator.serviceWorker.register('./sw.js')
     .then(()=>console.log('[OfficeHub] Service Worker registriert – App ist offlinefähig & installierbar'))
