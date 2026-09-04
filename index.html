@@ -596,7 +596,7 @@ create policy "office_kv_all" on office_kv
     <p class="sub">Licht und Türen direkt aus der App steuern – lokal im Büro-WLAN.</p>
 
     <div class="card">
-      <h3>💡 Beleuchtung (Shelly)</h3>
+      <h3>💡 Lampen (Shelly) – lokal im Büro-WLAN</h3>
       <ul class="rows" id="shellyList"></ul>
       <div class="empty" id="shellyEmpty" style="display:none">Noch keine Shelly-Geräte – unten die IP-Adresse aus der Shelly-App eintragen.</div>
       <form id="shellyForm" class="form-row" style="margin-top:12px">
@@ -610,6 +610,20 @@ create policy "office_kv_all" on office_kv
       </form>
       <div class="err" id="shellyErr"></div>
       <p class="hint">Die App schickt Schaltbefehle direkt an die Geräte-IP. Funktioniert, wenn Handy/Rechner im selben WLAN wie die Shellys sind. Jede Lampe erscheint auch im 🗺️ Lageplan (Räume-Tab) – dort per Klick schalten und im „Anordnen"-Modus an die richtige Stelle ziehen.</p>
+    </div>
+
+    <div class="card">
+      <h3>☁️ Shelly Cloud – Licht von unterwegs</h3>
+      <div class="form-row" style="margin-bottom:8px">
+        <div class="grow"><label class="field-lbl" for="shCloudServer">Server</label>
+          <input type="text" id="shCloudServer" placeholder="z. B. https://shelly-59-eu.shelly.cloud" autocomplete="off"></div>
+        <div class="grow"><label class="field-lbl" for="shCloudKey">Cloud-Auth-Key</label>
+          <input type="password" id="shCloudKey" placeholder="aus der Shelly-App" autocomplete="off"></div>
+        <button class="btn ghost" id="shCloudSave" type="button" style="align-self:flex-end">Speichern &amp; Geräte laden</button>
+      </div>
+      <ul class="rows" id="shCloudList"></ul>
+      <div class="empty" id="shCloudEmpty" style="display:none">Noch keine Cloud-Geräte geladen – Server + Key eintragen und „Speichern &amp; Geräte laden".</div>
+      <p class="hint">Shelly-App → Einstellungen → „Autorisierungs-Cloud-Key" (Authorization cloud key): dort stehen <b>Server-Adresse</b> und <b>Key</b>. Cloud-Lampen lassen sich von überall schalten – auch auf der Website – und zeigen den echten Schaltzustand. Der Key wird im Team geteilt. Shelly erlaubt ca. 1 Befehl pro Sekunde.</p>
     </div>
 
     <div class="card">
@@ -666,7 +680,8 @@ const defaults = () => ({
   rooms: [],            // {id,name,type,capacity,floor,plan:{x,y,w,h}}
   bookings: [],         // meeting: {...,start,end,title,person,seriesId?} | desk: {...,person}
   roomsSeeded: false,
-  shellys: [],          // {id,name,ip,gen,lastState}
+  shellys: [],          // {id,name,mode:'local'|'cloud',ip,gen,cloudId,channel,lastState,floor,plan}
+  shellyCloud: {server:'', authKey:''},
   nukis: [],            // {id,name,bridgeIp,token,nukiId}
   itemHistory: {},      // name -> count
   sync: {url:'', key:'', office:'', enabled:false},
@@ -810,7 +825,7 @@ $('#themeBtn').addEventListener('click', ()=>{
 });
 
 /* ================= Team-Sync (Supabase REST) ================= */
-const SYNC_KEYS = ['tasks','lists','people','members','expenses','settledLog','floors','rooms','bookings','shellys','nukis','itemHistory'];
+const SYNC_KEYS = ['tasks','lists','people','members','expenses','settledLog','floors','rooms','bookings','shellys','shellyCloud','nukis','itemHistory'];
 let saveHashes = {}, syncDirty = {}, lastLocalEdit = {}, pushTimer = null, pullTimer = null;
 function hashStr(s){ let h=5381; for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))|0; } return h; }
 const collHash = k => hashStr(JSON.stringify(state[k]));
@@ -2046,7 +2061,97 @@ function openRoomModal(room){
 }
 
 /* ================= Smart Office ================= */
+const SHELLY_PROXY = 'https://nocsjyzmnskbyccrjayx.supabase.co/functions/v1/shelly-proxy';
+let cloudDevices = [];
+async function shellyCloudCall(body){
+  const res = await fetch(SHELLY_PROXY, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  return res.json();
+}
+const cloudErr = r => (r && r.errors && Object.values(r.errors)[0]) || (r && r.error) || 'Fehler';
+async function shellyCloudLoad(showToast){
+  const cfg = state.shellyCloud;
+  if(!cfg.server || !cfg.authKey) return;
+  try{
+    const r = await shellyCloudCall({server:cfg.server, authKey:cfg.authKey, op:'list'});
+    if(!r.isok){ if(showToast) toast('Shelly-Cloud: '+cloudErr(r)); return; }
+    const ds = (r.data && r.data.devices_status) || {};
+    cloudDevices = Object.entries(ds).map(([id, st])=>{
+      const sw = st['switch:0'];
+      const on = sw ? !!sw.output : (st.relays && st.relays[0]) ? !!st.relays[0].ison : null;
+      const info = st._dev_info || {};
+      return {id, code: info.code || '', online: info.online !== false, on};
+    });
+    let changed = false;
+    for(const d of state.shellys){
+      if(d.mode !== 'cloud') continue;
+      const c = cloudDevices.find(x=>x.id===d.cloudId);
+      if(c && c.on !== null && c.on !== d.lastState){ d.lastState = c.on; changed = true; }
+    }
+    if(changed) persist();
+    if(changed || showToast) renderAll();
+    if(showToast) toast(`${cloudDevices.length} Cloud-Gerät${cloudDevices.length!==1?'e':''} geladen. ☁️`);
+  }catch(e){ if(showToast) toast('Shelly-Cloud nicht erreichbar.'); }
+}
+function openCloudAddModal(c){
+  const inName = el('input',{type:'text', value: c.code ? c.code+' '+c.id.slice(-4) : c.id, autocomplete:'off'});
+  const inCh = el('input',{type:'number', value:'0', min:'0', max:'3', title:'Kanal (0 = erster Ausgang)'});
+  const selFloor = el('select',{});
+  for(const f of state.floors){ const o = el('option',{value:f.id}, f.name); if(f.id===state.activeFloor) o.selected = true; selFloor.append(o); }
+  openModal(
+    modalHead('☁️ Cloud-Lampe hinzufügen'),
+    el('p',{class:'sub', style:'margin-bottom:10px'}, `Gerät ${c.id}${c.code ? ' · '+c.code : ''}`),
+    el('form',{onsubmit:e=>{
+      e.preventDefault();
+      const name = inName.value.trim(); if(!name){ toast('Bitte einen Namen eingeben.'); return; }
+      state.shellys.push({id:uid(), name, mode:'cloud', cloudId:c.id, channel:parseInt(inCh.value,10)||0, lastState: !!c.on, floor:selFloor.value});
+      save(); renderAll(); closeModal();
+      toast(`„${name}“ hinzugefügt – erscheint im Lageplan. 💡`);
+    }},
+      el('div',{class:'form-row', style:'margin-bottom:8px'}, el('div',{class:'grow'}, el('label',{class:'field-lbl'},'Name'), inName)),
+      el('div',{class:'form-row', style:'margin-bottom:12px'},
+        el('div',{}, el('label',{class:'field-lbl'},'Etage'), selFloor),
+        el('div',{style:'max-width:110px'}, el('label',{class:'field-lbl'},'Kanal'), inCh)),
+      el('button',{class:'btn', type:'submit'},'Hinzufügen')));
+}
+function renderShellyCloud(){
+  const cfg = state.shellyCloud;
+  for(const [id, val] of [['#shCloudServer', cfg.server], ['#shCloudKey', cfg.authKey]]){
+    const inp = $(id); if(document.activeElement !== inp && inp.value !== val) inp.value = val;
+  }
+  const ul = $('#shCloudList'); ul.innerHTML = '';
+  $('#shCloudEmpty').style.display = cloudDevices.length ? 'none' : '';
+  for(const c of cloudDevices){
+    const added = state.shellys.find(d=>d.mode==='cloud' && d.cloudId===c.id);
+    ul.append(el('li',{},
+      el('span',{style:'font-size:18px'}, c.on ? '💡' : '🔅'),
+      el('div',{class:'row-main'},
+        el('div',{class:'row-title'}, added ? added.name : (c.code || 'Shelly')),
+        el('div',{class:'row-meta'}, el('span',{}, 'ID '+c.id), el('span',{}, c.online ? '🟢 online' : '🔴 offline'), el('span',{}, c.on===null ? '' : (c.on ? 'an' : 'aus')))),
+      added ? el('span',{class:'badge neutral'},'✓ als Lampe') :
+        el('button',{class:'btn ghost small', onclick:()=>openCloudAddModal(c)},'＋ Als Lampe')));
+  }
+}
+$('#shCloudSave').addEventListener('click', ()=>{
+  const server = $('#shCloudServer').value.trim(), authKey = $('#shCloudKey').value.trim();
+  if(!server || !authKey){ toast('Bitte Server und Cloud-Auth-Key eintragen.'); return; }
+  state.shellyCloud = {server, authKey}; save();
+  toast('Lade Geräte aus der Shelly-Cloud…');
+  shellyCloudLoad(true);
+});
+setInterval(()=>{ if(document.visibilityState==='visible') shellyCloudLoad(false); }, 30000);
 async function shellyCmd(d, turnOn){
+  if(d.mode === 'cloud'){
+    const cfg = state.shellyCloud;
+    if(!cfg.server || !cfg.authKey){ toast('Shelly-Cloud ist nicht konfiguriert (Smart → Shelly Cloud).'); return; }
+    d.lastState = turnOn; save(); renderAll();
+    try{
+      const r = await shellyCloudCall({server:cfg.server, authKey:cfg.authKey, op:'control', id:d.cloudId, channel:d.channel||0, turn: turnOn?'on':'off'});
+      if(r.isok) toast(`💡 ${d.name} ${turnOn?'eingeschaltet':'ausgeschaltet'} (Cloud). ✅`);
+      else toast('Shelly-Cloud: '+cloudErr(r));
+      setTimeout(()=>shellyCloudLoad(false), 2000);
+    }catch(e){ toast('Shelly-Cloud nicht erreichbar – Internetverbindung prüfen.'); }
+    return;
+  }
   d.lastState = turnOn; save(); renderAll();
   const url = d.gen==='gen1'
     ? `http://${d.ip}/relay/0?turn=${turnOn?'on':'off'}`
@@ -2135,6 +2240,7 @@ function openNukiEditModal(n){
       el('button',{class:'btn', type:'submit'},'Speichern')));
 }
 function renderSmart(){
+  renderShellyCloud();
   const ul = $('#shellyList'); ul.innerHTML = '';
   $('#shellyEmpty').style.display = state.shellys.length ? 'none' : '';
   for(const d of state.shellys){
@@ -2142,7 +2248,7 @@ function renderSmart(){
       el('span',{style:'font-size:20px'},'💡'),
       el('div',{class:'row-main'},
         el('div',{class:'row-title'}, d.name),
-        el('div',{class:'row-meta'}, el('span',{}, d.ip), el('span',{}, d.gen==='gen1'?'Gen 1':'Gen 2+'))),
+        el('div',{class:'row-meta'}, d.mode==='cloud' ? el('span',{},'☁️ Cloud · Kanal '+(d.channel||0)) : el('span',{}, d.ip), d.mode==='cloud' ? null : el('span',{}, d.gen==='gen1'?'Gen 1':'Gen 2+'))),
       (()=>{ const fs = el('select',{style:'max-width:150px', title:'Etage im Lageplan'});
         for(const f of state.floors){ const o = el('option',{value:f.id}, '🏢 '+f.name); if(f.id===d.floor) o.selected = true; fs.append(o); }
         fs.addEventListener('change', ()=>{ d.floor = fs.value; save(); renderAll(); toast(`${d.name} liegt jetzt auf „${state.floors.find(f=>f.id===fs.value).name}“.`); });
@@ -2185,7 +2291,7 @@ $('#shellyForm').addEventListener('submit', e=>{
   if(!name || !ip){ err.textContent='Bitte Name und IP-Adresse angeben.'; err.classList.add('show'); return; }
   if(!/^[a-zA-Z0-9.\-]+$/.test(ip)){ err.textContent='Das sieht nicht nach einer gültigen IP/Adresse aus.'; err.classList.add('show'); return; }
   err.classList.remove('show');
-  state.shellys.push({id:uid(), name, ip, gen:$('#shellyGen').value, lastState:false, floor:state.activeFloor});
+  state.shellys.push({id:uid(), name, mode:'local', ip, gen:$('#shellyGen').value, lastState:false, floor:state.activeFloor});
   save();
   $('#shellyName').value=''; $('#shellyIp').value='';
   renderAll();
@@ -2258,6 +2364,7 @@ initSyncHashes();
 renderSyncUI();
 go('home');
 startSync();
+shellyCloudLoad(false);
 if(!adminMember()) openAdminSetupModal();
 else if(!currentMember()) openProfileModal();
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
