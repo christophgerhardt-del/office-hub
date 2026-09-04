@@ -2563,6 +2563,7 @@ $('#nukiForm').addEventListener('submit', e=>{
 
 /* ================= Boot ================= */
 function renderAll(){
+  if(state.floors.length && !state.floors.some(f=>f.id===state.activeFloor)) state.activeFloor = state.floors[0].id;
   renderHome(); renderSettings(); renderTasks(); renderShopping(); renderMoney(); renderRooms(); renderSmart();
 }
 buildNav();
