@@ -238,6 +238,10 @@
   .floorplan.hasbg .plan-el.room{background:color-mix(in srgb, var(--accent-soft) 82%, transparent)}
   .plan-el.desk{background:var(--green-soft); border:1.5px solid var(--green); color:var(--green)}
   .plan-el.desk.taken{background:var(--card); border-color:var(--track); color:var(--muted)}
+  .plan-el.light{background:var(--amber-soft); border:1.5px solid var(--amber); color:var(--amber); border-radius:50%}
+  .plan-el.light .pe-ico{font-size:18px}
+  .plan-el.light.off{background:var(--card); border-color:var(--track); color:var(--muted)}
+  .plan-el.light.off .pe-ico{filter:grayscale(1); opacity:.6}
   .floorplan.edit .plan-el{cursor:move; border-style:dashed}
   .rs-handle{
     position:absolute; right:0; bottom:0; width:16px; height:16px;
@@ -543,8 +547,10 @@ create policy "office_kv_all" on office_kv
         <span><span class="dot" style="background:var(--green)"></span>Platz frei</span>
         <span><span class="dot" style="background:var(--track)"></span>Platz belegt</span>
         <span><span class="dot" style="background:var(--accent)"></span>Meetingraum</span>
+        <span><span class="dot" style="background:var(--amber)"></span>Licht an</span>
+        <span><span class="dot" style="background:var(--track)"></span>Licht aus</span>
       </div>
-      <p class="hint" id="planHint">Klicke im Plan auf einen Platz oder Raum, um direkt zu buchen. Mit „Anordnen" ziehst du alles an seinen echten Platz im Büro – Räume lassen sich unten rechts größer ziehen. Über „⚙️ Etagen" legst du weitere Etagen an und hinterlegst ein Grundriss-Foto.</p>
+      <p class="hint" id="planHint">Klicke im Plan auf einen Platz oder Raum, um direkt zu buchen. Mit „Anordnen" ziehst du alles an seinen echten Platz im Büro – Räume lassen sich unten rechts größer ziehen. Über „⚙️ Etagen" legst du weitere Etagen an und hinterlegst ein Grundriss-Foto. 💡 Lampen (Shelly) erscheinen ebenfalls im Plan – Klick schaltet das Licht.</p>
     </div>
 
     <div class="card" id="weekCard" style="display:none">
@@ -603,7 +609,7 @@ create policy "office_kv_all" on office_kv
         <button class="btn ghost" type="submit">＋ Gerät</button>
       </form>
       <div class="err" id="shellyErr"></div>
-      <p class="hint">Die App schickt Schaltbefehle direkt an die Geräte-IP. Funktioniert, wenn Handy/Rechner im selben WLAN wie die Shellys sind.</p>
+      <p class="hint">Die App schickt Schaltbefehle direkt an die Geräte-IP. Funktioniert, wenn Handy/Rechner im selben WLAN wie die Shellys sind. Jede Lampe erscheint auch im 🗺️ Lageplan (Räume-Tab) – dort per Klick schalten und im „Anordnen"-Modus an die richtige Stelle ziehen.</p>
     </div>
 
     <div class="card">
@@ -707,6 +713,7 @@ const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(3
     ch = true;
   }
   for(const n of state.nukis){ if(!n.mode){ n.mode = 'bridge'; ch = true; } }
+  for(const d of state.shellys){ if(!d.floor){ d.floor = state.floors[0].id; ch = true; } }
   if(ch) persist();
 })();
 
@@ -1874,6 +1881,12 @@ function ensurePlanPositions(){
     }
     changed = true;
   }
+  let li = 0;
+  for(const d of state.shellys){
+    if(d.plan){ continue; }
+    d.plan = {x: Math.max(2, 88 - (li%6)*11), y: 40 + Math.floor(li/6)*16, w: 8, h: 13};
+    li++; changed = true;
+  }
   if(changed) save();
 }
 function positionPlanEl(elm, p){
@@ -1917,6 +1930,19 @@ function renderPlan(){
     elm.addEventListener('click', ()=>{ if(!planEdit) openResourceModal(r); });
     positionPlanEl(elm, r.plan);
     planEls[r.id] = elm;
+    fp.append(elm);
+  }
+  /* Lampen (Shelly) */
+  for(const d of state.shellys){
+    if(d.floor !== state.activeFloor) continue;
+    const elm = el('div',{class:'plan-el light'+(d.lastState?'':' off'), title:`${d.name} – Klick schaltet`},
+      el('span',{class:'pe-ico'},'💡'),
+      el('span',{}, d.name),
+      el('span',{class:'pe-sub'}, d.lastState ? 'an' : 'aus'));
+    elm.addEventListener('pointerdown', e=>planDragStart(e, d, 'move'));
+    elm.addEventListener('click', ()=>{ if(!planEdit) shellyCmd(d, !d.lastState); });
+    positionPlanEl(elm, d.plan);
+    planEls[d.id] = elm;
     fp.append(elm);
   }
 }
@@ -2117,6 +2143,10 @@ function renderSmart(){
       el('div',{class:'row-main'},
         el('div',{class:'row-title'}, d.name),
         el('div',{class:'row-meta'}, el('span',{}, d.ip), el('span',{}, d.gen==='gen1'?'Gen 1':'Gen 2+'))),
+      (()=>{ const fs = el('select',{style:'max-width:150px', title:'Etage im Lageplan'});
+        for(const f of state.floors){ const o = el('option',{value:f.id}, '🏢 '+f.name); if(f.id===d.floor) o.selected = true; fs.append(o); }
+        fs.addEventListener('change', ()=>{ d.floor = fs.value; save(); renderAll(); toast(`${d.name} liegt jetzt auf „${state.floors.find(f=>f.id===fs.value).name}“.`); });
+        return fs; })(),
       el('button',{class:'switch'+(d.lastState?' on':''), 'aria-label':`${d.name} schalten`,
         onclick:()=>shellyCmd(d, !d.lastState)}),
       el('button',{class:'icon-btn','aria-label':'Gerät entfernen', onclick:()=>{
@@ -2155,7 +2185,7 @@ $('#shellyForm').addEventListener('submit', e=>{
   if(!name || !ip){ err.textContent='Bitte Name und IP-Adresse angeben.'; err.classList.add('show'); return; }
   if(!/^[a-zA-Z0-9.\-]+$/.test(ip)){ err.textContent='Das sieht nicht nach einer gültigen IP/Adresse aus.'; err.classList.add('show'); return; }
   err.classList.remove('show');
-  state.shellys.push({id:uid(), name, ip, gen:$('#shellyGen').value, lastState:false});
+  state.shellys.push({id:uid(), name, ip, gen:$('#shellyGen').value, lastState:false, floor:state.activeFloor});
   save();
   $('#shellyName').value=''; $('#shellyIp').value='';
   renderAll();
