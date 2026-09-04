@@ -6,6 +6,9 @@
 <title>OfficeHub – Büro organisieren</title>
 <meta name="theme-color" content="#1f4e8c">
 <link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -13,289 +16,277 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗂️</text></svg>">
 <style>
   :root{
-    --bg:#f4f6fa; --card:#ffffff; --ink:#1c2733; --muted:#64748b;
-    --accent:#1f4e8c; --accent-soft:#e7eef8; --accent-ink:#ffffff;
-    --green:#15803d; --green-soft:#e5f5ec; --red:#b91c1c; --red-soft:#fdecec;
-    --amber:#b45309; --amber-soft:#fdf3e2;
-    --border:#e2e8f0; --track:#cbd5e1;
-    --topbar:linear-gradient(135deg,#1f4e8c 0%,#2c6cb8 100%);
-    --shadow:0 1px 3px rgba(16,32,54,.08),0 4px 14px rgba(16,32,54,.06);
-    --radius:14px;
+    --bg:#f3f5f9; --card:#ffffff; --ink:#0f172a; --muted:#64748b; --faint:#94a3b8;
+    --accent:#2563eb; --accent-soft:#e8effd; --accent-ink:#ffffff; --accent-hover:#1d4ed8;
+    --green:#16a34a; --green-soft:#e6f6ec; --red:#dc2626; --red-soft:#fdecec;
+    --amber:#d97706; --amber-soft:#fff3df;
+    --border:#e6eaf0; --border-strong:#d5dbe5; --track:#cbd5e1;
+    --header:#ffffff; --header-ink:#0f172a; --header-muted:#64748b;
+    --shadow:0 1px 2px rgba(15,23,42,.04), 0 1px 3px rgba(15,23,42,.05);
+    --shadow-lg:0 10px 30px rgba(15,23,42,.12);
+    --radius:16px; --radius-sm:10px;
+    --font:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   }
   html[data-theme=dark]{
-    --bg:#0f172a; --card:#1b2740; --ink:#e2e8f0; --muted:#94a3b8;
-    --accent:#5b96e0; --accent-soft:#20345a; --accent-ink:#ffffff;
-    --green:#34c26b; --green-soft:#14301f; --red:#f87171; --red-soft:#3a1a1a;
-    --amber:#fbbf24; --amber-soft:#332708;
-    --border:#2b3a5c; --track:#334155;
-    --topbar:linear-gradient(135deg,#14223c 0%,#1d3355 100%);
-    --shadow:0 1px 3px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.3);
+    --bg:#0b1220; --card:#131c2e; --ink:#e5e9f2; --muted:#94a3b8; --faint:#64748b;
+    --accent:#60a5fa; --accent-soft:#1a2a47; --accent-ink:#0b1220; --accent-hover:#93c5fd;
+    --green:#4ade80; --green-soft:#12301f; --red:#f87171; --red-soft:#3a1a1a;
+    --amber:#fbbf24; --amber-soft:#3a2a08;
+    --border:#1f2b40; --border-strong:#2b3a55; --track:#334155;
+    --header:#0f172a; --header-ink:#e5e9f2; --header-muted:#94a3b8;
+    --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-lg:0 12px 32px rgba(0,0,0,.5);
     color-scheme:dark;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
-  body{
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-    background:var(--bg); color:var(--ink); min-height:100dvh; line-height:1.45;
-    transition:background .2s ease;
-  }
+  body{font-family:var(--font); background:var(--bg); color:var(--ink); min-height:100dvh; line-height:1.5; font-size:14.5px; -webkit-font-smoothing:antialiased}
   button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   input,select{font:inherit;color:inherit}
   input[type=text],input[type=password],input[type=date],input[type=number],select{
-    background:var(--card); border:1px solid var(--border); border-radius:10px;
-    padding:9px 12px; width:100%; outline:none;
+    background:var(--card); border:1px solid var(--border-strong); border-radius:var(--radius-sm);
+    padding:0 12px; height:40px; width:100%; outline:none; transition:border-color .12s, box-shadow .12s;
   }
   input:focus,select:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
-  ::placeholder{color:#94a3b8}
+  ::placeholder{color:var(--faint)}
 
-  /* ---------- Layout ---------- */
+  /* Icons */
+  .ic{display:inline-flex; width:1.15em; height:1.15em; vertical-align:-0.2em; flex:none}
+  .ic svg{width:100%; height:100%; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
+  h2 .ic,h3 .ic{margin-right:8px; color:var(--accent)}
+  .btn .ic,.chip .ic{margin-right:6px; width:1.05em; height:1.05em}
+
+  /* ---------- Header ---------- */
   .topbar{
-    position:sticky; top:0; z-index:20; background:var(--topbar); color:var(--accent-ink);
-    padding:calc(10px + env(safe-area-inset-top)) 16px 10px; display:flex; align-items:center; gap:10px;
+    position:sticky; top:0; z-index:20; background:var(--header); color:var(--header-ink);
+    border-bottom:1px solid var(--border);
+    padding:calc(8px + env(safe-area-inset-top)) 20px 8px; display:flex; align-items:center; gap:10px;
   }
-  .topbar .logo{font-size:20px; font-weight:700; letter-spacing:.2px; display:flex; align-items:center; gap:8px}
-  .topbar .logo span{font-size:22px}
+  .topbar .logo{font-size:17px; font-weight:700; letter-spacing:-.2px; display:flex; align-items:center; gap:10px; margin-right:8px}
+  .logo-mark{width:32px; height:32px; border-radius:9px; background:var(--accent); color:#fff; display:inline-flex; align-items:center; justify-content:center}
+  .logo-mark .ic{width:18px; height:18px; vertical-align:0}
   nav.desktop{display:flex; gap:2px; margin-left:auto}
-  nav.desktop button{padding:8px 13px; border-radius:10px; color:#cfe0f5; font-weight:600}
-  nav.desktop button.active{background:rgba(255,255,255,.16); color:#fff}
-  nav.desktop button:hover{color:#fff}
-  #themeBtn,#settingsBtn{font-size:18px; padding:6px 10px; border-radius:10px; margin-left:2px}
-  #themeBtn:hover,#settingsBtn:hover{background:rgba(255,255,255,.16)}
-  .qa-btn.big{font-size:16px; padding:14px 22px; flex:1; justify-content:center; min-width:180px}
-  .qa-btn.big.off{background:var(--bg); border:1.5px solid var(--border); color:var(--muted)}
-  .dash-head{display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap}
-  .dash-head h3{margin:0; flex:1}
+  nav.desktop button{padding:8px 12px; border-radius:var(--radius-sm); color:var(--header-muted); font-weight:600; font-size:13.5px; display:inline-flex; align-items:center; gap:7px}
+  nav.desktop button .ic{width:17px; height:17px; vertical-align:0}
+  nav.desktop button:hover{color:var(--header-ink); background:var(--bg)}
+  nav.desktop button.active{background:var(--accent-soft); color:var(--accent)}
+  #themeBtn,#settingsBtn{width:38px; height:38px; border-radius:var(--radius-sm); color:var(--header-muted); display:inline-flex; align-items:center; justify-content:center}
+  #themeBtn .ic,#settingsBtn .ic{width:19px; height:19px; vertical-align:0}
+  #themeBtn:hover,#settingsBtn:hover{background:var(--bg); color:var(--header-ink)}
   @media(max-width:767px){ #themeBtn{margin-left:auto} }
 
-  main{max-width:960px; margin:0 auto; padding:20px 16px calc(88px + env(safe-area-inset-bottom))}
-  @media(min-width:768px){ main{padding-bottom:40px} }
+  main{max-width:1040px; margin:0 auto; padding:24px 20px calc(88px + env(safe-area-inset-bottom))}
+  @media(min-width:768px){ main{padding-bottom:48px} }
+  @media(max-width:767px){ main{padding:16px 14px calc(84px + env(safe-area-inset-bottom))} }
 
   .view{display:none}
   .view.active{display:block; animation:fade .18s ease}
   @keyframes fade{from{opacity:0; transform:translateY(4px)}to{opacity:1; transform:none}}
 
-  h2{font-size:22px; margin-bottom:4px}
+  h2{font-size:24px; font-weight:700; letter-spacing:-.4px; margin-bottom:2px; display:flex; align-items:center}
+  h2 .ic{width:24px; height:24px; vertical-align:0}
   .sub{color:var(--muted); font-size:14px; margin-bottom:18px}
-  .card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; margin-bottom:16px}
-  .card h3{font-size:15px; margin-bottom:12px}
-  .hint{font-size:12.5px; color:var(--muted); margin-top:10px; line-height:1.5}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px; margin-bottom:16px}
+  .card h3{font-size:14.5px; font-weight:600; margin-bottom:14px; display:flex; align-items:center; letter-spacing:-.1px}
+  .card h3 .ic{width:18px; height:18px; vertical-align:0}
+  .hint{font-size:12.5px; color:var(--muted); margin-top:12px; line-height:1.55}
+  @media(max-width:767px){ .card{padding:16px} h2{font-size:21px} }
 
   nav.mobile{
     position:fixed; bottom:0; left:0; right:0; z-index:20; display:flex;
     background:var(--card); border-top:1px solid var(--border);
     padding-bottom:env(safe-area-inset-bottom);
   }
-  nav.mobile button{
-    flex:1; padding:8px 0 6px; display:flex; flex-direction:column; align-items:center; gap:2px;
-    color:var(--muted); font-size:10px; font-weight:600;
-  }
-  nav.mobile button .ico{font-size:19px; line-height:1}
+  nav.mobile button{flex:1; padding:9px 0 7px; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--muted); font-size:10.5px; font-weight:600}
+  nav.mobile button .ic{width:22px; height:22px; vertical-align:0}
   nav.mobile button.active{color:var(--accent)}
   @media(min-width:768px){ nav.mobile{display:none} }
   @media(max-width:767px){ nav.desktop{display:none} }
 
-  /* ---------- Übersicht ---------- */
-  .stat-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px}
-  .stat{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; text-align:left; transition:transform .12s ease}
-  .stat:hover{transform:translateY(-2px)}
-  .stat .num{font-size:26px; font-weight:700}
-  .stat .lbl{color:var(--muted); font-size:13px; margin-top:2px}
-  .stat .ico{font-size:20px; margin-bottom:6px; display:block}
-  .qa-row{display:flex; gap:8px; flex-wrap:wrap}
-  .qa-btn{
-    display:flex; align-items:center; gap:8px; padding:10px 16px; border-radius:12px;
-    background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:14px;
-    transition:transform .1s ease;
-  }
+  /* ---------- Dashboard ---------- */
+  .stat-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:16px}
+  .stat{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; text-align:left; display:flex; align-items:center; gap:14px; transition:transform .12s ease, border-color .12s}
+  .stat:hover{transform:translateY(-2px); border-color:var(--border-strong)}
+  .stat .ico{width:42px; height:42px; border-radius:12px; background:var(--accent-soft); color:var(--accent); display:inline-flex; align-items:center; justify-content:center; flex:none}
+  .stat .ico .ic{width:21px; height:21px; vertical-align:0}
+  .stat .num{font-size:22px; font-weight:700; letter-spacing:-.4px; line-height:1.1}
+  .stat .lbl{color:var(--muted); font-size:12.5px; margin-top:3px}
+  .qa-row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  .qa-btn{display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:12px; background:var(--accent-soft); color:var(--accent); font-weight:600; font-size:14px; border:1px solid transparent; transition:transform .1s ease, background .12s}
   .qa-btn:hover{transform:translateY(-1px)}
   .qa-btn.on{background:var(--green-soft); color:var(--green)}
-  .sync-dot{display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--track); margin-left:6px; vertical-align:1px}
+  .qa-btn.big{font-size:15px; padding:16px 22px; flex:1; justify-content:center; min-width:200px; border-radius:14px}
+  .qa-btn.big.on{background:var(--accent); color:#fff}
+  .qa-btn.big.on:hover{background:var(--accent-hover)}
+  .qa-btn.big.off{background:var(--card); border-color:var(--border-strong); color:var(--ink)}
+  .qa-btn .ic{width:20px; height:20px; vertical-align:0}
+  .dash-head{display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap}
+  .dash-head h3{margin:0; flex:1}
+  .status-pill{font-size:12.5px; font-weight:600; color:var(--muted); padding:8px 12px; border-radius:99px; background:var(--bg); border:1px solid var(--border)}
+  .sync-dot{display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--track); margin-left:8px; vertical-align:1px}
   .sync-dot.ok{background:var(--green)}
   .sync-dot.err{background:var(--red)}
-  pre.sql{
-    background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:12px;
-    font-size:11.5px; overflow-x:auto; user-select:all; line-height:1.5; margin-top:8px;
-  }
+  pre.sql{background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px; font-size:11.5px; overflow-x:auto; user-select:all; line-height:1.5; margin-top:8px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 
-  /* ---------- Listen / Zeilen ---------- */
+  /* ---------- Listen ---------- */
   ul.rows{list-style:none}
-  ul.rows li{display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--border)}
+  ul.rows li{display:flex; align-items:center; gap:12px; padding:11px 2px; border-bottom:1px solid var(--border)}
   ul.rows li:last-child{border-bottom:none}
   .row-main{flex:1; min-width:0}
   .row-title{font-weight:600; overflow-wrap:anywhere}
-  .row-meta{font-size:12.5px; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap; margin-top:1px}
+  .row-meta{font-size:12.5px; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap; margin-top:2px}
   .done .row-title{text-decoration:line-through; color:var(--muted); font-weight:500}
-
-  .check{
-    width:24px; height:24px; min-width:24px; border-radius:8px; border:2px solid var(--track);
-    display:flex; align-items:center; justify-content:center; font-size:14px; color:transparent;
-    transition:all .12s ease; background:var(--card);
-  }
+  .check{width:24px; height:24px; min-width:24px; border-radius:7px; border:2px solid var(--track); display:flex; align-items:center; justify-content:center; font-size:14px; color:transparent; transition:all .12s ease; background:var(--card)}
+  .check:hover{border-color:var(--accent)}
   .check.on{background:var(--green); border-color:var(--green); color:#fff}
-
-  .icon-btn{width:34px; height:34px; min-width:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:16px}
+  .icon-btn{width:34px; height:34px; min-width:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; color:var(--faint); font-size:15px}
   .icon-btn:hover{background:var(--red-soft); color:var(--red)}
   .icon-btn.blue:hover{background:var(--accent-soft); color:var(--accent)}
-
-  .badge{font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:99px; white-space:nowrap}
+  .badge{font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:99px; white-space:nowrap}
   .badge.hoch{background:var(--red-soft); color:var(--red)}
   .badge.mittel{background:var(--amber-soft); color:var(--amber)}
-  .badge.niedrig{background:var(--accent-soft); color:var(--accent)}
-  .badge.neutral{background:var(--accent-soft); color:var(--accent)}
-  .overdue{color:var(--red); font-weight:700}
+  .badge.niedrig,.badge.neutral{background:var(--accent-soft); color:var(--accent)}
+  .overdue{color:var(--red); font-weight:600}
 
   /* ---------- Formulare ---------- */
   .form-row{display:flex; gap:8px; flex-wrap:wrap}
   .form-row > *{flex:1; min-width:120px}
   .form-row .grow{flex:2 1 200px}
-  .btn{background:var(--accent); color:#fff; font-weight:600; border-radius:10px; padding:9px 18px; flex:0 0 auto; min-width:0; transition:filter .12s ease}
-  .btn:hover{filter:brightness(1.1)}
+  .btn{background:var(--accent); color:#fff; font-weight:600; border-radius:var(--radius-sm); height:40px; padding:0 18px; flex:0 0 auto; min-width:0; display:inline-flex; align-items:center; justify-content:center; gap:6px; transition:background .12s, transform .1s; white-space:nowrap}
+  .btn:hover{background:var(--accent-hover)}
+  .btn:active{transform:translateY(1px)}
   .btn.ghost{background:var(--accent-soft); color:var(--accent)}
-  .btn.small{padding:6px 12px; font-size:13.5px}
+  .btn.ghost:hover{background:var(--accent-soft); filter:brightness(.96)}
+  .btn.small{height:34px; padding:0 13px; font-size:13px}
   .btn.danger{background:var(--red-soft); color:var(--red)}
-  .field-lbl{font-size:12px; font-weight:600; color:var(--muted); margin-bottom:3px; display:block}
-
-  .filters{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; align-items:center}
-  .chip{padding:6px 13px; border-radius:99px; background:var(--card); border:1px solid var(--border); font-size:13.5px; font-weight:600; color:var(--muted)}
+  .btn.danger:hover{background:var(--red-soft); filter:brightness(.96)}
+  .field-lbl{font-size:12px; font-weight:600; color:var(--muted); margin-bottom:5px; display:block}
+  .filters{display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; align-items:center}
+  .chip{height:34px; padding:0 14px; border-radius:99px; background:var(--card); border:1px solid var(--border-strong); font-size:13px; font-weight:600; color:var(--muted); display:inline-flex; align-items:center}
+  .chip:hover{border-color:var(--accent); color:var(--accent)}
   .chip.active{background:var(--accent); border-color:var(--accent); color:#fff}
-
-  .empty{color:var(--muted); text-align:center; padding:28px 12px; font-size:14.5px}
-  .empty .big{font-size:34px; display:block; margin-bottom:8px}
+  .empty{color:var(--muted); text-align:center; padding:28px 12px; font-size:14px}
+  .empty .big{font-size:32px; display:block; margin-bottom:8px}
 
   /* ---------- Finanzen ---------- */
-  .people-wrap{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px}
-  .person-chip{display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:99px; background:var(--accent-soft); color:var(--accent); font-weight:600; font-size:13.5px}
-  .person-chip button{color:var(--accent); opacity:.65; font-size:15px; line-height:1}
-  .person-chip button:hover{opacity:1}
+  .people-wrap{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:4px}
+  .person-chip{display:inline-flex; align-items:center; gap:6px; padding:7px 13px; border-radius:99px; background:var(--accent-soft); color:var(--accent); font-weight:600; font-size:13px}
   .part-boxes{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px}
-  .part-boxes label{display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:10px; border:1px solid var(--border); background:var(--card); font-size:13.5px; font-weight:600; cursor:pointer}
+  .part-boxes label{display:flex; align-items:center; gap:6px; padding:7px 13px; border-radius:var(--radius-sm); border:1px solid var(--border-strong); background:var(--card); font-size:13px; font-weight:600; cursor:pointer}
   .part-boxes label.on{border-color:var(--accent); background:var(--accent-soft); color:var(--accent)}
   .part-boxes input{display:none}
   .amount-pos{color:var(--green); font-weight:700}
   .amount-neg{color:var(--red); font-weight:700}
-  .settle{display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; background:var(--green-soft); margin-bottom:8px; font-size:14.5px}
+  .settle{display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:var(--radius-sm); background:var(--green-soft); margin-bottom:8px; font-size:14px}
   .settle b{color:var(--green)}
-  .balance-row{display:flex; justify-content:space-between; padding:8px 4px; border-bottom:1px solid var(--border); font-size:14.5px}
+  .balance-row{display:flex; justify-content:space-between; padding:9px 2px; border-bottom:1px solid var(--border); font-size:14px}
   .balance-row:last-child{border-bottom:none}
-
-  .err{color:var(--red); font-size:13px; margin-top:6px; display:none}
+  .err{color:var(--red); font-size:13px; margin-top:8px; display:none}
   .err.show{display:block}
 
   /* ---------- Räume ---------- */
   .date-nav{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-  .date-nav input[type=date]{flex:1; min-width:150px; max-width:220px}
-  .date-nav .arrow{width:40px; height:40px; border-radius:10px; background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:16px}
+  .date-nav input[type=date]{flex:1; min-width:150px; max-width:200px}
+  .date-nav .arrow{width:40px; height:40px; border-radius:var(--radius-sm); background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:14px}
   .room-head{display:flex; align-items:center; gap:10px; margin-bottom:8px}
   .room-head h3{margin:0; flex:1}
-  .occupancy{position:relative; height:14px; border-radius:7px; background:var(--accent-soft); margin:6px 0 12px; overflow:hidden}
+  .occupancy{position:relative; height:12px; border-radius:6px; background:var(--accent-soft); margin:6px 0 12px; overflow:hidden}
   .occupancy .block{position:absolute; top:0; bottom:0; background:var(--accent); opacity:.85; border-radius:3px}
-  .occ-scale{display:flex; justify-content:space-between; font-size:10.5px; color:var(--muted); margin-top:-8px; margin-bottom:10px}
+  .occ-scale{display:flex; justify-content:space-between; font-size:10.5px; color:var(--faint); margin-top:-8px; margin-bottom:10px}
   .desk-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-bottom:12px}
-  .desk{border:1.5px solid var(--border); border-radius:12px; padding:12px; text-align:center}
+  .desk{border:1.5px solid var(--border); border-radius:12px; padding:14px 12px; text-align:center; background:var(--card)}
   .desk .d-ico{font-size:22px}
-  .desk .d-name{font-weight:700; font-size:13.5px; margin:4px 0 2px}
+  .desk .d-name{font-weight:600; font-size:13.5px; margin:6px 0 2px}
   .desk .d-status{font-size:12px; font-weight:600}
   .desk.free{border-color:var(--green)}
   .desk.free .d-status{color:var(--green)}
-  .desk.taken{border-color:var(--border); background:var(--bg)}
+  .desk.taken{background:var(--bg)}
   .desk.taken .d-status{color:var(--muted)}
   .desk .icon-btn{margin:4px auto 0}
   details.manage{margin-bottom:16px}
-  details.manage summary{cursor:pointer; font-weight:600; color:var(--muted); font-size:14px; padding:4px 2px}
+  details.manage summary{cursor:pointer; font-weight:600; color:var(--muted); font-size:13.5px; padding:6px 2px; display:flex; align-items:center}
+  details.manage summary .ic{margin-right:8px}
   details.manage .card{margin-top:10px}
-  details.sub-details{margin-top:10px}
+  details.sub-details{margin-top:12px}
   details.sub-details summary{cursor:pointer; font-size:13px; font-weight:600; color:var(--muted)}
-
-  /* Wochenansicht */
   .wk-wrap{overflow-x:auto}
   table.wk{border-collapse:collapse; width:100%; min-width:720px; font-size:12.5px}
-  table.wk th, table.wk td{border:1px solid var(--border); padding:6px 7px; text-align:left; vertical-align:top}
-  table.wk th{background:var(--accent-soft); color:var(--accent); font-size:12px; white-space:nowrap}
+  table.wk th, table.wk td{border:1px solid var(--border); padding:7px 8px; text-align:left; vertical-align:top}
+  table.wk th{background:var(--bg); color:var(--muted); font-size:12px; font-weight:600; white-space:nowrap}
   table.wk th.today{background:var(--accent); color:#fff}
   table.wk td{min-width:88px; cursor:pointer; height:44px}
   table.wk td:hover{background:var(--accent-soft)}
-  table.wk td .wk-b{background:var(--accent-soft); color:var(--accent); border-radius:6px; padding:1px 5px; margin-bottom:3px; font-weight:600; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px}
-  table.wk td.roomcol{font-weight:700; cursor:default; white-space:nowrap}
+  table.wk td .wk-b{background:var(--accent-soft); color:var(--accent); border-radius:6px; padding:1px 6px; margin-bottom:3px; font-weight:600; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px}
+  table.wk td.roomcol{font-weight:600; cursor:default; white-space:nowrap}
   table.wk td.roomcol:hover{background:none}
 
-  /* ---------- Lageplan ---------- */
+  /* ---------- Lageplan / Lichtplan ---------- */
   .floorplan{
-    position:relative; width:100%; aspect-ratio:5/3; border-radius:12px;
-    border:1.5px solid var(--border); overflow:hidden; background:var(--bg);
-    background-image:
-      linear-gradient(var(--accent-soft) 1px, transparent 1px),
-      linear-gradient(90deg, var(--accent-soft) 1px, transparent 1px);
-    background-size:5% 8.333%;
+    position:relative; width:100%; aspect-ratio:16/9; border-radius:14px;
+    border:1px solid var(--border-strong); overflow:hidden; background:var(--bg);
+    background-image:linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size:5% 8.888%;
   }
   .floorplan.hasbg{background-size:cover; background-position:center}
   .plan-el{
-    position:absolute; border-radius:10px; padding:2px 4px;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
-    font-size:11.5px; font-weight:700; text-align:center; line-height:1.2;
+    position:absolute; border-radius:12px; padding:3px 5px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    font-size:11.5px; font-weight:600; text-align:center; line-height:1.2;
     user-select:none; -webkit-user-select:none; touch-action:none; cursor:pointer;
-    overflow:hidden; transition:box-shadow .12s ease;
+    overflow:hidden; transition:box-shadow .15s ease, transform .1s ease;
   }
-  .plan-el:hover{box-shadow:0 3px 10px rgba(16,32,54,.25); z-index:5}
+  .plan-el:hover{box-shadow:var(--shadow-lg); z-index:5; transform:translateY(-1px)}
   .plan-el .pe-ico{font-size:15px; line-height:1}
-  .plan-el .pe-sub{font-size:9.5px; font-weight:600; opacity:.8}
+  .plan-el .pe-sub{font-size:10px; font-weight:500; opacity:.8}
   .plan-el.room{background:var(--accent-soft); border:1.5px solid var(--accent); color:var(--accent)}
-  .floorplan.hasbg .plan-el.room{background:color-mix(in srgb, var(--accent-soft) 82%, transparent)}
+  .floorplan.hasbg .plan-el.room{background:color-mix(in srgb, var(--accent-soft) 85%, transparent)}
   .plan-el.desk{background:var(--green-soft); border:1.5px solid var(--green); color:var(--green)}
   .plan-el.desk.taken{background:var(--card); border-color:var(--track); color:var(--muted)}
-  .plan-el.light{background:var(--amber-soft); border:1.5px solid var(--amber); color:var(--amber); border-radius:50%}
-  .plan-el.light .pe-ico{font-size:18px}
-  .plan-el.light.off{background:var(--card); border-color:var(--track); color:var(--muted)}
-  .plan-el.light.off .pe-ico{filter:grayscale(1); opacity:.6}
-  .plan-el.cover{background:var(--accent-soft); border:1.5px dashed var(--accent); color:var(--accent); border-radius:8px}
+  .plan-el.light{background:var(--amber-soft); border:1.5px solid var(--amber); color:var(--amber); border-radius:50%; box-shadow:0 0 0 6px rgba(217,119,6,.10), 0 0 24px rgba(251,191,36,.45)}
+  .plan-el.light{height:auto !important; aspect-ratio:1}
+  .plan-el.light .pe-ico{width:26px; height:26px}
+  .plan-el.light.off{background:var(--card); border-color:var(--track); color:var(--muted); box-shadow:none}
+  .plan-el.light.off .pe-ico{filter:grayscale(1); opacity:.5}
+  .plan-el.cover{background:var(--accent-soft); border:1.5px dashed var(--accent); color:var(--accent); border-radius:10px}
   .plan-el.cover .pe-ico{font-size:16px}
-  .floorplan.edit .plan-el{cursor:move; border-style:dashed}
-  .rs-handle{
-    position:absolute; right:0; bottom:0; width:16px; height:16px;
-    border-radius:8px 0 8px 0; background:var(--accent); cursor:nwse-resize; display:none;
-    touch-action:none;
-  }
+  .floorplan.edit .plan-el{cursor:move; border-style:dashed; box-shadow:none}
+  .rs-handle{position:absolute; right:0; bottom:0; width:16px; height:16px; border-radius:8px 0 8px 0; background:var(--accent); cursor:nwse-resize; display:none; touch-action:none}
   .floorplan.edit .plan-el.room .rs-handle{display:block}
   @media(max-width:767px){
-    .plan-el{font-size:9px; border-radius:7px}
+    .floorplan{aspect-ratio:4/3; background-size:5% 6.666%}
+    .plan-el{font-size:9px; border-radius:8px}
     .plan-el .pe-ico{font-size:12px}
+    .plan-el.light .pe-ico{width:18px; height:18px}
     .plan-el .pe-sub{font-size:8px}
   }
-  .plan-legend{display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; font-size:12px; color:var(--muted); font-weight:600}
-  .plan-legend .dot{display:inline-block; width:11px; height:11px; border-radius:4px; margin-right:5px; vertical-align:-1px}
+  .plan-legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:12px; font-size:12px; color:var(--muted); font-weight:500}
+  .plan-legend .dot{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:-1px}
 
   /* ---------- Mini-Modal ---------- */
-  #modalBack{position:fixed; inset:0; background:rgba(8,16,30,.5); z-index:60; display:none}
+  #modalBack{position:fixed; inset:0; background:rgba(8,16,30,.55); backdrop-filter:blur(2px); z-index:60; display:none}
   #modalBack.show{display:block}
-  #miniModal{
-    position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:61;
-    width:min(440px, 92vw); max-height:82vh; overflow:auto; display:none; margin-bottom:0;
-  }
-  #miniModal.show{display:block}
-  #miniModal h3{display:flex; align-items:center; gap:8px}
-  #miniModal .close-x{margin-left:auto; font-size:18px; color:var(--muted); padding:2px 8px; border-radius:8px}
+  #miniModal{position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:61; width:min(460px, 92vw); max-height:84vh; overflow:auto; display:none; margin-bottom:0; box-shadow:var(--shadow-lg)}
+  #miniModal.show{display:block; animation:fade .15s ease}
+  #miniModal h3{display:flex; align-items:center; gap:8px; font-size:16px}
+  #miniModal .close-x{margin-left:auto; font-size:16px; color:var(--faint); width:32px; height:32px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center}
   #miniModal .close-x:hover{background:var(--red-soft); color:var(--red)}
 
-  /* ---------- Smart Office ---------- */
-  .switch{width:52px; height:30px; min-width:52px; border-radius:99px; background:var(--track); position:relative; transition:background .15s ease}
-  .switch::after{content:''; position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:50%; background:#fff; transition:left .15s ease; box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  /* ---------- Smart ---------- */
+  .switch{width:48px; height:28px; min-width:48px; border-radius:99px; background:var(--track); position:relative; transition:background .15s ease}
+  .switch::after{content:''; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; transition:left .15s ease; box-shadow:0 1px 3px rgba(0,0,0,.25)}
   .switch.on{background:var(--green)}
-  .switch.on::after{left:25px}
+  .switch.on::after{left:23px}
   .door-row{display:flex; gap:6px; flex-wrap:wrap}
-  .door-btn-sm{padding:7px 12px; border-radius:10px; background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:13px}
+  .door-btn-sm{height:34px; padding:0 13px; border-radius:var(--radius-sm); background:var(--accent-soft); color:var(--accent); font-weight:600; font-size:13px; display:inline-flex; align-items:center}
   .door-btn-sm.primary{background:var(--green-soft); color:var(--green)}
-  .door-btn-sm:hover{filter:brightness(1.05)}
+  .door-btn-sm:hover{filter:brightness(.96)}
 
   /* ---------- Toast & Konfetti ---------- */
-  #toast{
-    position:fixed; left:50%; transform:translateX(-50%) translateY(20px);
-    bottom:calc(76px + env(safe-area-inset-bottom)); z-index:70;
-    background:#1c2733; color:#fff; border-radius:12px; padding:11px 16px;
-    display:flex; align-items:center; gap:14px; font-size:14px; box-shadow:0 8px 24px rgba(0,0,0,.25);
-    opacity:0; pointer-events:none; transition:all .2s ease; max-width:92vw;
-  }
+  #toast{position:fixed; left:50%; transform:translateX(-50%) translateY(20px); bottom:calc(76px + env(safe-area-inset-bottom)); z-index:70; background:#0f172a; color:#fff; border-radius:12px; padding:12px 18px; display:flex; align-items:center; gap:14px; font-size:14px; box-shadow:var(--shadow-lg); opacity:0; pointer-events:none; transition:all .2s ease; max-width:92vw}
+  html[data-theme=dark] #toast{background:#e5e9f2; color:#0f172a}
   #toast.show{opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto}
-  #toast button{color:#7fb2f0; font-weight:700}
-  @media(min-width:768px){ #toast{bottom:24px} }
+  #toast button{color:#93c5fd; font-weight:700}
+  html[data-theme=dark] #toast button{color:#1d4ed8}
+  @media(min-width:768px){ #toast{bottom:28px} }
   .confetti-piece{position:fixed; top:-30px; z-index:99; font-size:22px; pointer-events:none; animation:confetti-fall linear forwards}
   @keyframes confetti-fall{to{transform:translateY(112vh) rotate(720deg)}}
 </style>
@@ -303,10 +294,10 @@
 <body>
 
 <header class="topbar">
-  <div class="logo"><span>🗂️</span> OfficeHub</div>
+  <div class="logo"><span class="logo-mark"><i class="ic" data-ico="grid"></i></span>OfficeHub</div>
   <nav class="desktop" id="navDesktop"></nav>
-  <button id="themeBtn" aria-label="Dunkelmodus umschalten">🌙</button>
-  <button id="settingsBtn" aria-label="Einstellungen">⚙️</button>
+  <button id="themeBtn" aria-label="Dunkelmodus umschalten"></button>
+  <button id="settingsBtn" aria-label="Einstellungen"><i class="ic" data-ico="settings"></i></button>
 </header>
 
 <main>
@@ -323,10 +314,10 @@
 
     <div class="card" id="lightCard">
       <div class="dash-head">
-        <h3>💡 Lichtplan</h3>
+        <h3><i class="ic" data-ico="lightbulb"></i>Lichtplan</h3>
         <div class="filters" id="lightFloorChips" style="margin:0"></div>
-        <button class="btn ghost small" id="lightBgBtn">🖼️ Grundriss</button>
-        <button class="btn ghost small" id="lightEditBtn">✏️ Anordnen</button>
+        <button class="btn ghost small" id="lightBgBtn"><i class="ic" data-ico="image"></i>Grundriss</button>
+        <button class="btn ghost small" id="lightEditBtn"><i class="ic" data-ico="move"></i>Anordnen</button>
       </div>
       <div class="floorplan" id="lightplan"></div>
       <div class="plan-legend">
@@ -338,14 +329,14 @@
     </div>
 
     <div class="stat-grid">
-      <button class="stat" data-goto="tasks"><span class="ico">✅</span><div class="num" id="statTasks">0</div><div class="lbl">Offene Aufgaben</div></button>
-      <button class="stat" data-goto="rooms"><span class="ico">📅</span><div class="num" id="statRooms">0</div><div class="lbl">Buchungen heute</div></button>
-      <button class="stat" data-goto="shopping"><span class="ico">🛒</span><div class="num" id="statShopping">0</div><div class="lbl">Offene Einkäufe</div></button>
-      <button class="stat" data-goto="money"><span class="ico">💶</span><div class="num" id="statMoney">0,00 €</div><div class="lbl">Offene Ausgleichszahlungen</div></button>
+      <button class="stat" data-goto="tasks"><span class="ico"><i class="ic" data-ico="check-square"></i></span><div class="num" id="statTasks">0</div><div class="lbl">Offene Aufgaben</div></button>
+      <button class="stat" data-goto="rooms"><span class="ico"><i class="ic" data-ico="calendar"></i></span><div class="num" id="statRooms">0</div><div class="lbl">Buchungen heute</div></button>
+      <button class="stat" data-goto="shopping"><span class="ico"><i class="ic" data-ico="cart"></i></span><div class="num" id="statShopping">0</div><div class="lbl">Offene Einkäufe</div></button>
+      <button class="stat" data-goto="money"><span class="ico"><i class="ic" data-ico="euro"></i></span><div class="num" id="statMoney">0,00 €</div><div class="lbl">Offene Ausgleichszahlungen</div></button>
     </div>
 
     <div class="card" id="homeNextCard">
-      <h3>Als Nächstes fällig</h3>
+      <h3><i class="ic" data-ico="clock"></i>Als Nächstes fällig</h3>
       <ul class="rows" id="homeNextList"></ul>
       <div class="empty" id="homeNextEmpty" style="display:none"><span class="big">🎉</span>Keine offenen Aufgaben – alles erledigt!</div>
     </div>
@@ -353,11 +344,11 @@
 
   <!-- ===== Einstellungen ===== -->
   <section class="view" id="view-settings">
-    <h2>⚙️ Einstellungen</h2>
+    <h2><i class="ic" data-ico="settings"></i>Einstellungen</h2>
     <p class="sub">Team, Synchronisation und Daten.</p>
 
     <div class="card" id="teamCard">
-      <h3>👥 Team</h3>
+      <h3><i class="ic" data-ico="users"></i>Team</h3>
       <p class="sub" id="teamIdentity" style="margin-bottom:10px"></p>
       <ul class="rows" id="memberList"></ul>
       <form id="memberForm" class="form-row" style="margin-top:10px">
@@ -368,7 +359,7 @@
     </div>
 
     <div class="card">
-      <h3>🔄 Team-Sync <span class="sync-dot" id="syncDot"></span></h3>
+      <h3><i class="ic" data-ico="refresh"></i>Team-Sync <span class="sync-dot" id="syncDot"></span></h3>
       <p class="sub" id="syncStatus" style="margin-bottom:10px">Aus – Daten bleiben nur in diesem Browser.</p>
       <div class="form-row" style="margin-bottom:8px">
         <div class="grow"><label class="field-lbl" for="syncUrl">Supabase-URL</label>
@@ -379,8 +370,8 @@
       <div class="form-row">
         <div class="grow"><label class="field-lbl" for="syncOffice">Büro-Code (geheim, mit dem Team teilen)</label>
           <input type="text" id="syncOffice" placeholder="Code erzeugen oder einfügen" autocomplete="off"></div>
-        <button class="btn ghost small" id="syncGenCode" type="button" style="align-self:flex-end">🎲 Code erzeugen</button>
-        <button class="btn small" id="syncToggle" type="button" style="align-self:flex-end">▶️ Aktivieren</button>
+        <button class="btn ghost small" id="syncGenCode" type="button" style="align-self:flex-end"><i class="ic" data-ico="dice"></i>Code erzeugen</button>
+        <button class="btn small" id="syncToggle" type="button" style="align-self:flex-end">Aktivieren</button>
       </div>
       <details class="sub-details">
         <summary>Einmalige Einrichtung (Supabase-Projekt)</summary>
@@ -399,10 +390,10 @@ create policy "office_kv_all" on office_kv
     </div>
 
     <div class="card">
-      <h3>Daten</h3>
+      <h3><i class="ic" data-ico="database"></i>Backup</h3>
       <div class="form-row">
-        <button class="btn ghost small" id="exportBtn">⬇ Backup exportieren</button>
-        <button class="btn ghost small" id="importBtn">⬆ Backup importieren</button>
+        <button class="btn ghost small" id="exportBtn"><i class="ic" data-ico="download"></i>Backup exportieren</button>
+        <button class="btn ghost small" id="importBtn"><i class="ic" data-ico="upload"></i>Backup importieren</button>
       </div>
       <input type="file" id="importFile" accept="application/json" style="display:none">
       <p class="hint">Ohne Team-Sync liegen alle Daten lokal in diesem Browser. Mit dem Backup nimmst du sie auf ein anderes Gerät mit.</p>
@@ -411,7 +402,7 @@ create policy "office_kv_all" on office_kv
 
   <!-- ===== Aufgaben ===== -->
   <section class="view" id="view-tasks">
-    <h2>Aufgaben</h2>
+    <h2><i class="ic" data-ico="check-square"></i>Aufgaben</h2>
     <p class="sub">Das Office im Griff – wer macht was bis wann.</p>
 
     <div class="card">
@@ -459,7 +450,7 @@ create policy "office_kv_all" on office_kv
 
   <!-- ===== Einkauf ===== -->
   <section class="view" id="view-shopping">
-    <h2>Einkaufslisten</h2>
+    <h2><i class="ic" data-ico="cart"></i>Einkaufslisten</h2>
     <p class="sub">Gemeinsame Listen fürs Büro – einfach abhaken.</p>
 
     <div class="filters" id="listChips"></div>
@@ -493,7 +484,7 @@ create policy "office_kv_all" on office_kv
 
   <!-- ===== Finanzen ===== -->
   <section class="view" id="view-money">
-    <h2>Rechnungen aufteilen</h2>
+    <h2><i class="ic" data-ico="euro"></i>Rechnungen aufteilen</h2>
     <p class="sub">Wer hat was bezahlt – und wer schuldet wem wie viel.</p>
 
     <div class="card">
@@ -523,7 +514,7 @@ create policy "office_kv_all" on office_kv
     </div>
 
     <div class="card">
-      <h3>Kontostand</h3>
+      <h3><i class="ic" data-ico="scale"></i>Kontostand</h3>
       <div id="balances"></div>
       <div class="empty" id="balEmpty" style="display:none"><span class="big">⚖️</span>Noch keine Ausgaben erfasst.</div>
     </div>
@@ -542,14 +533,14 @@ create policy "office_kv_all" on office_kv
     </div>
 
     <details class="manage" id="settledDetails" style="display:none">
-      <summary>🗂️ Archiv – quittgestellte Runden</summary>
+      <summary><i class="ic" data-ico="archive"></i>Archiv – quittgestellte Runden</summary>
       <div class="card"><ul class="rows" id="settledList"></ul></div>
     </details>
   </section>
 
   <!-- ===== Räume & Arbeitsplätze ===== -->
   <section class="view" id="view-rooms">
-    <h2>Räume &amp; Arbeitsplätze</h2>
+    <h2><i class="ic" data-ico="building"></i>Räume &amp; Arbeitsplätze</h2>
     <p class="sub">Meetingräume und Schreibtische buchen – ohne Doppelbelegung.</p>
 
     <div class="card">
@@ -569,8 +560,8 @@ create policy "office_kv_all" on office_kv
 
     <div class="card" id="planCard">
       <div class="room-head">
-        <h3>🗺️ Lageplan</h3>
-        <button class="btn ghost small" id="planEditBtn">✏️ Anordnen</button>
+        <h3><i class="ic" data-ico="map"></i>Lageplan</h3>
+        <button class="btn ghost small" id="planEditBtn"><i class="ic" data-ico="move"></i>Anordnen</button>
       </div>
       <div class="floorplan" id="floorplan"></div>
       <div class="plan-legend">
@@ -582,7 +573,7 @@ create policy "office_kv_all" on office_kv
     </div>
 
     <div class="card" id="weekCard" style="display:none">
-      <h3 id="weekTitle">📅 Wochenübersicht</h3>
+      <h3 id="weekTitle">Wochenübersicht</h3>
       <div class="wk-wrap"><table class="wk" id="weekTable"></table></div>
       <p class="hint">Klicke auf eine Zelle, um zu diesem Tag zu springen und zu buchen.</p>
     </div>
@@ -590,7 +581,7 @@ create policy "office_kv_all" on office_kv
     <div id="meetingRooms"></div>
 
     <div class="card" id="deskCard">
-      <h3>🖥️ Arbeitsplätze</h3>
+      <h3><i class="ic" data-ico="monitor"></i>Arbeitsplätze</h3>
       <div class="desk-grid" id="deskGrid"></div>
       <div class="empty" id="deskEmpty" style="display:none">Auf dieser Etage gibt es noch keine Arbeitsplätze – unten unter „Ressourcen verwalten".</div>
       <form id="deskForm" class="form-row">
@@ -601,7 +592,7 @@ create policy "office_kv_all" on office_kv
     </div>
 
     <details class="manage">
-      <summary>⚙️ Ressourcen verwalten (Räume &amp; Plätze anlegen)</summary>
+      <summary><i class="ic" data-ico="settings"></i>Ressourcen verwalten (Räume &amp; Plätze anlegen)</summary>
       <div class="card">
         <form id="resForm" class="form-row" style="margin-bottom:12px">
           <input type="text" id="resName" class="grow" placeholder="Name, z. B. Meetingraum Süd" autocomplete="off">
@@ -620,11 +611,11 @@ create policy "office_kv_all" on office_kv
 
   <!-- ===== Smart Office ===== -->
   <section class="view" id="view-smart">
-    <h2>Smart Office</h2>
+    <h2><i class="ic" data-ico="zap"></i>Smart Office</h2>
     <p class="sub">Licht und Türen direkt aus der App steuern – lokal im Büro-WLAN.</p>
 
     <div class="card">
-      <h3>💡 Lampen (Shelly) – lokal im Büro-WLAN</h3>
+      <h3><i class="ic" data-ico="wifi"></i>Lampen lokal (Shelly im Büro-WLAN)</h3>
       <ul class="rows" id="shellyList"></ul>
       <div class="empty" id="shellyEmpty" style="display:none">Noch keine Shelly-Geräte – unten die IP-Adresse aus der Shelly-App eintragen.</div>
       <form id="shellyForm" class="form-row" style="margin-top:12px">
@@ -641,7 +632,7 @@ create policy "office_kv_all" on office_kv
     </div>
 
     <div class="card">
-      <h3>☁️ Shelly Cloud – Licht von unterwegs</h3>
+      <h3><i class="ic" data-ico="cloud"></i>Shelly Cloud – Licht von unterwegs</h3>
       <div class="form-row" style="margin-bottom:8px">
         <div class="grow"><label class="field-lbl" for="shCloudServer">Server</label>
           <input type="text" id="shCloudServer" placeholder="z. B. https://shelly-59-eu.shelly.cloud" autocomplete="off"></div>
@@ -656,7 +647,7 @@ create policy "office_kv_all" on office_kv
     </div>
 
     <div class="card">
-      <h3>🚪 Türen (Nuki)</h3>
+      <h3><i class="ic" data-ico="door"></i>Türen (Nuki)</h3>
       <ul class="rows" id="nukiList"></ul>
       <div class="empty" id="nukiEmpty" style="display:none">Noch keine Tür angelegt – unten Bridge-IP, Token und Nuki-ID eintragen.</div>
       <form id="nukiForm" style="margin-top:12px">
@@ -843,7 +834,7 @@ function confetti(){
 const THEME_KEY = 'officehub.theme';
 function applyTheme(t){
   document.documentElement.dataset.theme = t;
-  $('#themeBtn').textContent = t==='dark' ? '☀️' : '🌙';
+  $('#themeBtn').innerHTML = icoHtml(t==='dark' ? 'sun' : 'moon');
 }
 let theme = localStorage.getItem(THEME_KEY) ||
   (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -935,10 +926,11 @@ async function syncPull(){
 }
 function startSync(){
   clearInterval(pullTimer);
-  if(!syncReady()){ setSyncStatus('Aus – Daten bleiben nur in diesem Browser.'); return; }
+  if(!syncReady()){ setSyncStatus('Aus – Daten bleiben nur in diesem Browser.'); return Promise.resolve(); }
   setSyncStatus('Verbinde…');
-  syncPull();
+  const first = syncPull();
   pullTimer = setInterval(()=>{ if(document.visibilityState==='visible') syncPull(); }, 8000);
+  return first;
 }
 /* Vorbelegung: abgetrennte office_kv-Tabelle im bestehenden Supabase-Projekt.
    Der Anon-Key ist ein öffentlicher Client-Schlüssel; der Schutz der Daten
@@ -951,7 +943,7 @@ function renderSyncUI(){
   $('#syncUrl').value = state.sync.url || SYNC_DEFAULTS.url;
   $('#syncKey').value = state.sync.key || SYNC_DEFAULTS.key;
   $('#syncOffice').value = state.sync.office;
-  $('#syncToggle').textContent = state.sync.enabled ? '⏸ Deaktivieren' : '▶️ Aktivieren';
+  $('#syncToggle').innerHTML = state.sync.enabled ? icoHtml('pause')+'Deaktivieren' : icoHtml('play')+'Aktivieren';
 }
 $('#syncGenCode').addEventListener('click', ()=>{
   $('#syncOffice').value = (crypto.randomUUID ? crypto.randomUUID() : uid()+uid());
@@ -973,6 +965,53 @@ $('#syncToggle').addEventListener('click', ()=>{
   toast('Team-Sync aktiviert. 🔄');
 });
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && syncReady()) syncPull(); });
+
+
+/* ================= Icon-System (Lucide-Stil, inline SVG) ================= */
+const ICONS = {
+  grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>',
+  home:'<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+  'check-square':'<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+  check:'<polyline points="20 6 9 17 4 12"/>',
+  cart:'<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
+  euro:'<path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/>',
+  calendar:'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  lightbulb:'<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+  settings:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  refresh:'<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+  database:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>',
+  map:'<polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>',
+  door:'<path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/>',
+  image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+  move:'<polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/>',
+  monitor:'<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
+  cloud:'<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+  wifi:'<path d="M12 20h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/>',
+  archive:'<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
+  building:'<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/>',
+  zap:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  scale:'<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
+  power:'<path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/>',
+  trash:'<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+  pencil:'<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>',
+  user:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  crown:'<path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/>',
+  dice:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 8h.01"/><path d="M16 8h.01"/><path d="M12 12h.01"/><path d="M8 16h.01"/><path d="M16 16h.01"/>',
+  play:'<polygon points="6 3 20 12 6 21 6 3"/>',
+  pause:'<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
+  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+  layers:'<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>'
+};
+const icoHtml = name => `<i class="ic"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]||''}</svg></i>`;
+function ico(name){ const w = document.createElement('span'); w.innerHTML = icoHtml(name); return w.firstChild; }
+function hydrateIcons(root=document){
+  root.querySelectorAll('i.ic[data-ico]').forEach(i=>{ i.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[i.dataset.ico]||''}</svg>`; i.removeAttribute('data-ico'); });
+}
 
 /* ================= Team & Admin ================= */
 const IDENTITY_KEY = 'officehub.identity';
@@ -1099,7 +1138,7 @@ function renderTeam(){
   const ul = $('#memberList'); ul.innerHTML = '';
   for(const m of state.members){
     const row = el('li',{},
-      el('span',{style:'font-size:18px'}, m.role==='admin' ? '👑' : '👤'),
+      el('span',{class:'ic', style:'width:20px;height:20px;color:'+(m.role==='admin'?'var(--amber)':'var(--faint)')}, ico(m.role==='admin' ? 'crown' : 'user').firstChild),
       el('div',{class:'row-main'}, el('div',{class:'row-title'}, m.name)),
       el('span',{class:'badge '+(m.role==='admin'?'hoch':'neutral')}, m.role==='admin' ? 'Admin' : 'Mitglied'));
     if(isAdmin() && m.role!=='admin'){
@@ -1109,7 +1148,7 @@ function renderTeam(){
         snapshot();
         state.members = state.members.filter(x=>x.id!==m.id);
         save(); renderAll(); toast(`„${m.name}“ entfernt.`, true);
-      }},'🗑'));
+      }}, ico('trash')));
     }
     ul.append(row);
   }
@@ -1135,12 +1174,12 @@ $('#memberForm').addEventListener('submit', e=>{
 
 /* ================= Navigation ================= */
 const VIEWS = [
-  {id:'home',     label:'Start',     ico:'🏠'},
-  {id:'tasks',    label:'Aufgaben',  ico:'✅'},
-  {id:'shopping', label:'Einkauf',   ico:'🛒'},
-  {id:'money',    label:'Finanzen',  ico:'💶'},
-  {id:'rooms',    label:'Räume',     ico:'📅'},
-  {id:'smart',    label:'Smart',     ico:'💡'},
+  {id:'home',     label:'Start',     ico:'home'},
+  {id:'tasks',    label:'Aufgaben',  ico:'check-square'},
+  {id:'shopping', label:'Einkauf',   ico:'cart'},
+  {id:'money',    label:'Finanzen',  ico:'euro'},
+  {id:'rooms',    label:'Räume',     ico:'calendar'},
+  {id:'smart',    label:'Smart',     ico:'lightbulb'},
 ];
 let current = 'home';
 function buildNav(){
@@ -1148,9 +1187,7 @@ function buildNav(){
     nav.innerHTML = '';
     for(const v of VIEWS){
       const isMobile = nav.id === 'navMobile';
-      const b = el('button', {onclick: ()=>go(v.id)},
-        isMobile ? el('span',{class:'ico'},v.ico) : null,
-        v.label);
+      const b = el('button', {onclick: ()=>go(v.id)}, ico(v.ico), v.label);
       b.dataset.view = v.id;
       nav.append(b);
     }
@@ -1168,9 +1205,10 @@ document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',(
 /* ================= Übersicht ================= */
 function renderHome(){
   const h = new Date().getHours();
-  $('#homeGreeting').textContent = h<11 ? 'Guten Morgen! ☕' : h<17 ? 'Hallo! 👋' : 'Guten Abend! 🌆';
   const me = currentMember();
-  $('#homeSub').textContent = (me ? me.name+', d' : 'D') + 'ein Büro auf einen Blick.';
+  $('#homeGreeting').textContent = (h<11 ? 'Guten Morgen' : h<17 ? 'Hallo' : 'Guten Abend') + (me ? ', '+me.name : '') + '!';
+  const today = new Date().toLocaleDateString('de-DE',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  $('#homeSub').textContent = today;
   const openTasks = state.tasks.filter(t=>!t.done);
   $('#statTasks').textContent = openTasks.length;
   $('#statShopping').textContent = state.lists.reduce((n,l)=>n + l.items.filter(i=>!i.done).length, 0);
@@ -1188,8 +1226,8 @@ function renderHome(){
   const la = $('#lightAll'); la.innerHTML = '';
   const anyOn = lights.some(d=>d.lastState);
   la.append(
-    el('button',{class:'qa-btn big on', onclick:()=>allLights(true)},'💡 Alle Lichter an'),
-    el('button',{class:'qa-btn big off', onclick:()=>allLights(false)},'🌙 Alle Lichter aus'));
+    el('button',{class:'qa-btn big on', onclick:()=>allLights(true)}, ico('lightbulb'), 'Alle Lichter an'),
+    el('button',{class:'qa-btn big off', onclick:()=>allLights(false)}, ico('power'), 'Alle Lichter aus'));
   const qa = $('#quickActions'); qa.innerHTML = '';
   for(const d of state.shellys){
     if(d.kind==='cover') qa.append(el('button',{class:'qa-btn', onclick:()=>openCoverModal(d)},'🪟 ', d.name));
@@ -1202,7 +1240,7 @@ function renderHome(){
   if(!lights.length){
     la.append(el('span',{class:'row-meta', style:'align-self:center'}, 'Noch keine Lampen – im Tab „Smart" anlegen.'));
   }else{
-    la.append(el('span',{class:'row-meta', style:'align-self:center'}, `${lights.filter(d=>d.lastState).length} von ${lights.length} an`));
+    la.append(el('span',{class:'status-pill'}, `${lights.filter(d=>d.lastState).length} von ${lights.length} Lichtern an`));
   }
 
   /* Lichtplan: Etagen-Chips nur bei mehreren Etagen */
@@ -1309,7 +1347,7 @@ function taskRow(t, compact){
       snapshot();
       state.tasks = state.tasks.filter(x=>x.id!==t.id);
       save(); renderAll(); toast('Aufgabe gelöscht.', true);
-    }},'🗑')
+    }}, ico('trash'))
   );
 }
 function renderTasks(){
@@ -1385,7 +1423,7 @@ function renderShopping(){
         snapshot();
         list.items = list.items.filter(x=>x.id!==it.id);
         save(); renderAll(); toast('Artikel gelöscht.', true);
-      }},'🗑')
+      }}, ico('trash'))
     ));
   }
 }
@@ -1545,7 +1583,7 @@ function renderMoney(){
         snapshot();
         state.expenses = state.expenses.filter(y=>y.id!==x.id);
         save(); renderAll(); toast('Ausgabe gelöscht.', true);
-      }},'🗑')
+      }}, ico('trash'))
     ));
   }
   /* Archiv */
@@ -1673,7 +1711,7 @@ function bookingRow(b, compactModal){
     el('div',{class:'row-main'},
       el('div',{class:'row-title'}, b.title + (b.seriesId?' 🔁':'')),
       b.person ? el('div',{class:'row-meta'}, el('span',{},'👤 '+b.person)) : null),
-    el('button',{class:'icon-btn','aria-label':'Buchung löschen', onclick:()=>confirmDeleteBooking(b)},'🗑'));
+    el('button',{class:'icon-btn','aria-label':'Buchung löschen', onclick:()=>confirmDeleteBooking(b)}, ico('trash')));
 }
 
 function mondayOf(iso){
@@ -1685,7 +1723,7 @@ function mondayOf(iso){
 function renderWeek(){
   const mon = mondayOf(bookDate);
   const days = Array.from({length:7}, (_,i)=>addDays(mon,i));
-  $('#weekTitle').textContent = `📅 Woche ${fmtDate(mon)} – ${fmtDate(days[6])}`;
+  $('#weekTitle').innerHTML = icoHtml('calendar')+`Woche ${fmtDate(mon)} – ${fmtDate(days[6])}`;
   const tbl = $('#weekTable'); tbl.innerHTML = '';
   const rooms = state.rooms.filter(r=>r.type==='meeting' && r.floor===state.activeFloor);
   const head = el('tr',{}, el('th',{},'Raum'));
@@ -1719,9 +1757,9 @@ function renderFloorChips(){
     wrap.append(el('button',{
       class:'chip'+(f.id===state.activeFloor?' active':''),
       onclick:()=>{ state.activeFloor = f.id; persist(); renderRooms(); }
-    }, '🏢 '+f.name));
+    }, f.name));
   }
-  wrap.append(el('button',{class:'chip', onclick:openFloorsModal},'⚙️ Etagen'));
+  wrap.append(el('button',{class:'chip', onclick:openFloorsModal}, ico('layers'), 'Etagen'));
 }
 function openFloorsModal(){
   const wrap = el('div',{});
@@ -1748,7 +1786,7 @@ function openFloorsModal(){
         state.floors = state.floors.filter(x=>x.id!==f.id);
         if(state.activeFloor===f.id) state.activeFloor = state.floors[0].id;
         save(); renderRooms(); openFloorsModal(); toast(`Etage „${f.name}“ gelöscht.`, true);
-      }},'🗑'));
+      }}, ico('trash')));
     wrap.append(row);
   }
   const newInp = el('input',{type:'text', placeholder:'Neue Etage, z. B. 1. OG', autocomplete:'off'});
@@ -1850,7 +1888,7 @@ function renderRooms(){
           snapshot();
           state.bookings = state.bookings.filter(x=>x.id!==booking.id);
           save(); renderAll(); toast('Platzbuchung gelöscht.', true);
-        }},'🗑'));
+        }}, ico('trash')));
       }else{
         sel.append(el('option',{value:d.id}, d.name));
       }
@@ -1876,13 +1914,13 @@ function renderRooms(){
         el('div',{class:'row-meta'},
           el('span',{}, r.type==='meeting' ? `Meetingraum · ${r.capacity} Plätze` : 'Arbeitsplatz'),
           el('span',{},'🏢 '+(floor?floor.name:'?')))),
-      el('button',{class:'icon-btn blue','aria-label':'Ressource bearbeiten', onclick:()=>openResourceEditModal(r)},'✏️'),
+      el('button',{class:'icon-btn blue','aria-label':'Ressource bearbeiten', onclick:()=>openResourceEditModal(r)}, ico('pencil')),
       el('button',{class:'icon-btn','aria-label':'Ressource löschen', onclick:()=>{
         snapshot();
         state.rooms = state.rooms.filter(x=>x.id!==r.id);
         state.bookings = state.bookings.filter(b=>b.roomId!==r.id);
         save(); renderAll(); toast(`„${r.name}“ samt Buchungen gelöscht.`, true);
-      }},'🗑')
+      }}, ico('trash'))
     ));
   }
 }
@@ -1942,7 +1980,7 @@ let planEdit = false;
 const planEls = {};
 $('#planEditBtn').addEventListener('click', ()=>{
   planEdit = !planEdit;
-  $('#planEditBtn').textContent = planEdit ? '✅ Fertig' : '✏️ Anordnen';
+  $('#planEditBtn').innerHTML = planEdit ? icoHtml('check')+'Fertig' : icoHtml('move')+'Anordnen';
   $('#floorplan').classList.toggle('edit', planEdit);
   $('#planHint').textContent = planEdit
     ? 'Ziehe Räume und Plätze an ihre Position. Meetingräume lassen sich an der blauen Ecke unten rechts in der Größe ändern. Danach „Fertig" drücken.'
@@ -2019,7 +2057,7 @@ function applyFloorBg(fp){
 let lightEdit = false;
 $('#lightEditBtn').addEventListener('click', ()=>{
   lightEdit = !lightEdit;
-  $('#lightEditBtn').textContent = lightEdit ? '✅ Fertig' : '✏️ Anordnen';
+  $('#lightEditBtn').innerHTML = lightEdit ? icoHtml('check')+'Fertig' : icoHtml('move')+'Anordnen';
   $('#lightplan').classList.toggle('edit', lightEdit);
   $('#lightHint').textContent = lightEdit
     ? 'Ziehe die Lampen an ihre echte Position im Büro. Danach „Fertig" drücken.'
@@ -2039,7 +2077,7 @@ function renderLightPlan(){
           el('span',{class:'pe-ico'},'🪟'), el('span',{}, d.name),
           el('span',{class:'pe-sub'}, COVER_LABEL[d.coverState] || ''))
       : el('div',{class:'plan-el light'+(d.lastState?'':' off'), title:`${d.name} – Klick schaltet`},
-          el('span',{class:'pe-ico'},'💡'), el('span',{}, d.name),
+          el('span',{class:'pe-ico ic'}, ico('lightbulb').firstChild), el('span',{}, d.name),
           el('span',{class:'pe-sub'}, d.lastState ? 'an' : 'aus'));
     elm.addEventListener('pointerdown', e=>planDragStart(e, d, 'move'));
     elm.addEventListener('click', ()=>{ if(lightEdit) return; if(isCover) openCoverModal(d); else shellyCmd(d, !d.lastState); });
@@ -2142,7 +2180,7 @@ function openRoomModal(room){
       el('div',{class:'row-main'},
         el('div',{class:'row-title'}, b.title + (b.seriesId?' 🔁':'')),
         b.person ? el('div',{class:'row-meta'}, el('span',{},'👤 '+b.person)) : null),
-      el('button',{class:'icon-btn','aria-label':'Buchung löschen', onclick:()=>{ closeModal(); confirmDeleteBooking(b); }},'🗑')));
+      el('button',{class:'icon-btn','aria-label':'Buchung löschen', onclick:()=>{ closeModal(); confirmDeleteBooking(b); }}, ico('trash'))));
   }
   if(!dayB.length) ul.append(el('li',{}, el('span',{class:'row-meta'},'Ganztägig frei. 🎉')));
   openModal(
@@ -2259,7 +2297,7 @@ function renderShellyCloud(){
     if(c.kind === 'cover'){
       const added = state.shellys.find(d=>d.mode==='cloud' && d.cloudId===c.id);
       ul.append(el('li',{},
-        el('span',{style:'font-size:18px'},'🪟'),
+        el('span',{class:'ic', style:'width:20px;height:20px;color:var(--accent)'}, ico('layers').firstChild),
         el('div',{class:'row-main'},
           el('div',{class:'row-title'}, c.name || c.code || 'Rollladen'),
           el('div',{class:'row-meta'}, roomName ? el('span',{},'🏠 '+roomName) : null, el('span',{}, COVER_LABEL[c.coverState] || c.coverState || ''), el('span',{}, c.code), c.updated ? el('span',{},'zuletzt '+c.updated) : null)),
@@ -2270,7 +2308,7 @@ function renderShellyCloud(){
     c.chans.forEach((on, i)=>{
       const added = state.shellys.find(d=>d.mode==='cloud' && d.cloudId===c.id && (d.channel||0)===i);
       ul.append(el('li',{},
-        el('span',{style:'font-size:18px'}, on ? '💡' : '🔅'),
+        el('span',{class:'ic', style:'width:20px;height:20px;color:'+(on?'var(--amber)':'var(--faint)')}, ico('lightbulb').firstChild),
         el('div',{class:'row-main'},
           el('div',{class:'row-title'}, added ? added.name : (c.chanNames[i] || c.name || c.code || 'Shelly')),
           el('div',{class:'row-meta'}, roomName ? el('span',{},'🏠 '+roomName) : null, el('span',{}, on ? 'an' : 'aus'), c.chans.length>1 ? el('span',{},'Kanal '+(i+1)) : null, el('span',{}, c.code), c.updated ? el('span',{},'zuletzt '+c.updated) : null)),
@@ -2414,13 +2452,13 @@ function renderSmart(){
   for(const d of state.shellys){
     const isCover = d.kind === 'cover';
     ul.append(el('li',{},
-      el('span',{style:'font-size:20px'}, isCover ? '🪟' : '💡'),
+      el('span',{class:'ic', style:'width:22px;height:22px;color:'+(isCover?'var(--accent)':(d.lastState?'var(--amber)':'var(--faint)'))}, ico(isCover ? 'layers' : 'lightbulb').firstChild),
       el('div',{class:'row-main'},
         el('div',{class:'row-title'}, d.name),
-        el('div',{class:'row-meta'}, d.mode==='cloud' ? el('span',{}, isCover ? '☁️ Cloud · '+(COVER_LABEL[d.coverState]||'') : '☁️ Cloud · Kanal '+((d.channel||0)+1)) : el('span',{}, d.ip), d.mode==='cloud' ? null : el('span',{}, d.gen==='gen1'?'Gen 1':'Gen 2+')),
+        el('div',{class:'row-meta'}, d.mode==='cloud' ? el('span',{}, isCover ? 'Cloud · '+(COVER_LABEL[d.coverState]||'') : 'Cloud · Kanal '+((d.channel||0)+1)) : el('span',{}, d.ip), d.mode==='cloud' ? null : el('span',{}, d.gen==='gen1'?'Gen 1':'Gen 2+')),
         isCover ? el('div',{style:'margin-top:6px'}, coverButtons(d)) : null),
       (()=>{ const fs = el('select',{style:'max-width:150px', title:'Etage im Lageplan'});
-        for(const f of state.floors){ const o = el('option',{value:f.id}, '🏢 '+f.name); if(f.id===d.floor) o.selected = true; fs.append(o); }
+        for(const f of state.floors){ const o = el('option',{value:f.id}, f.name); if(f.id===d.floor) o.selected = true; fs.append(o); }
         fs.addEventListener('change', ()=>{ d.floor = fs.value; save(); renderAll(); toast(`${d.name} liegt jetzt auf „${state.floors.find(f=>f.id===fs.value).name}“.`); });
         return fs; })(),
       isCover ? null : el('button',{class:'switch'+(d.lastState?' on':''), 'aria-label':`${d.name} schalten`,
@@ -2429,27 +2467,27 @@ function renderSmart(){
         snapshot();
         state.shellys = state.shellys.filter(x=>x.id!==d.id);
         save(); renderAll(); toast(`„${d.name}“ entfernt.`, true);
-      }},'🗑')
+      }}, ico('trash'))
     ));
   }
   const nl = $('#nukiList'); nl.innerHTML = '';
   $('#nukiEmpty').style.display = state.nukis.length ? 'none' : '';
   for(const n of state.nukis){
     nl.append(el('li',{},
-      el('span',{style:'font-size:20px'},'🚪'),
+      el('span',{class:'ic', style:'width:22px;height:22px;color:var(--accent)'}, ico('door').firstChild),
       el('div',{class:'row-main'},
         el('div',{class:'row-title'}, n.name),
-        el('div',{class:'row-meta'}, el('span',{}, n.mode==='web' ? '☁️ Nuki Web-API' : 'Bridge '+(n.bridgeIp||'?'))),
+        el('div',{class:'row-meta'}, el('span',{}, n.mode==='web' ? 'Nuki Web-API (Cloud)' : 'Bridge '+(n.bridgeIp||'?'))),
         el('div',{class:'door-row', style:'margin-top:6px'},
           el('button',{class:'door-btn-sm primary', onclick:()=>nukiCmd(n,3,`${n.name} öffnen`)},'🚪 Öffnen'),
           el('button',{class:'door-btn-sm', onclick:()=>nukiCmd(n,1,`${n.name} aufschließen`)},'🔓 Aufschließen'),
           el('button',{class:'door-btn-sm', onclick:()=>nukiCmd(n,2,`${n.name} abschließen`)},'🔒 Abschließen'))),
-      el('button',{class:'icon-btn blue','aria-label':'Tür bearbeiten', onclick:()=>openNukiEditModal(n)},'✏️'),
+      el('button',{class:'icon-btn blue','aria-label':'Tür bearbeiten', onclick:()=>openNukiEditModal(n)}, ico('pencil')),
       el('button',{class:'icon-btn','aria-label':'Tür entfernen', onclick:()=>{
         snapshot();
         state.nukis = state.nukis.filter(x=>x.id!==n.id);
         save(); renderAll(); toast(`„${n.name}“ entfernt.`, true);
-      }},'🗑')
+      }}, ico('trash'))
     ));
   }
 }
@@ -2532,11 +2570,26 @@ applyTheme(theme);
 $('#expDate').value = todayISO();
 initSyncHashes();
 renderSyncUI();
+hydrateIcons();
 go('home');
-startSync();
-shellyCloudLoad(false);
-if(!adminMember()) openAdminSetupModal();
-else if(!currentMember()) openProfileModal();
+/* Verbindungs-Link: ?office=<Büro-Code> verbindet dieses Gerät automatisch */
+let joinedViaLink = false;
+try{
+  const params = new URLSearchParams(location.search);
+  const code = (params.get('office')||'').trim();
+  if(code){
+    state.sync = {url: SYNC_DEFAULTS.url, key: SYNC_DEFAULTS.key, office: code, enabled: true};
+    persist(); renderSyncUI();
+    history.replaceState(null, '', location.pathname);
+    joinedViaLink = true;
+  }
+}catch(e){}
+startSync().then(()=>{
+  if(joinedViaLink) toast('Mit deinem Büro verbunden – alle Daten sind da. ✅');
+  shellyCloudLoad(false);
+  if(!adminMember()) openAdminSetupModal();
+  else if(!currentMember()) openProfileModal();
+});
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   navigator.serviceWorker.register('./sw.js')
     .then(()=>console.log('[OfficeHub] Service Worker registriert – App ist offlinefähig & installierbar'))
