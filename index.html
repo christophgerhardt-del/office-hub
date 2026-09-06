@@ -229,6 +229,21 @@
     background-size:5% 8.888%;
   }
   .floorplan.hasbg{background-size:cover; background-position:center}
+  .floorplan.vector{background:var(--bg); border-color:var(--border)}
+  .fp-svg{position:absolute; inset:0; width:100%; height:100%; pointer-events:none}
+  .fp-floor{fill:var(--card)}
+  .fp-zone{fill:var(--accent-soft); opacity:.55}
+  .fp-zone.wc{fill:var(--bg); opacity:1}
+  .fp-desk{fill:var(--accent-soft); stroke:var(--accent); stroke-width:.45; opacity:.9}
+  .fp-chair{fill:var(--track)}
+  .fp-wall,.fp-outer{fill:none; stroke:var(--ink); stroke-width:2.5px; stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke}
+  .fp-wall{stroke-width:2px}
+  .fp-desk{vector-effect:non-scaling-stroke; stroke-width:1.2px}
+  .fp-door,.fp-doorline{vector-effect:non-scaling-stroke; stroke-width:1px}
+  .fp-door{fill:none; stroke:var(--faint); stroke-width:.35; stroke-dasharray:1 .8}
+  .fp-doorline{stroke:var(--faint); stroke-width:.5}
+  .fp-label{font:600 3.6px var(--font); fill:var(--faint); letter-spacing:.3px}
+  html[data-theme=dark] .fp-wall,html[data-theme=dark] .fp-outer{stroke:#cbd5e1}
   .plan-el{
     position:absolute; border-radius:12px; padding:3px 5px;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
@@ -243,7 +258,8 @@
   .floorplan.hasbg .plan-el.room{background:color-mix(in srgb, var(--accent-soft) 85%, transparent)}
   .plan-el.desk{background:var(--green-soft); border:1.5px solid var(--green); color:var(--green)}
   .plan-el.desk.taken{background:var(--card); border-color:var(--track); color:var(--muted)}
-  .plan-el.light{background:var(--amber-soft); border:1.5px solid var(--amber); color:var(--amber); border-radius:50%; box-shadow:0 0 0 6px rgba(217,119,6,.10), 0 0 24px rgba(251,191,36,.45)}
+  .plan-el.light{background:var(--amber-soft); border:1.5px solid var(--amber); color:var(--amber); border-radius:50%; box-shadow:0 0 0 6px rgba(217,119,6,.12), 0 0 32px 10px rgba(251,191,36,.42); z-index:2}
+  .plan-el.light:not(.off){background:#fde68a; border-color:#f59e0b; color:#92400e}
   .plan-el.light{height:auto !important; aspect-ratio:1}
   .plan-el.light .pe-ico{width:26px; height:26px}
   .plan-el.light.off{background:var(--card); border-color:var(--track); color:var(--muted); box-shadow:0 1px 4px rgba(15,23,42,.18)}
@@ -2072,6 +2088,18 @@ function renderPlan(){
 }
 function applyFloorBg(fp){
   const floor = state.floors.find(f=>f.id===state.activeFloor);
+  fp.querySelectorAll('svg.fp-svg').forEach(x=>x.remove());
+  if(floor && floor.vector){
+    fp.classList.add('hasbg','vector');
+    fp.style.backgroundImage = ''; fp.style.backgroundSize = '';
+    fp.style.aspectRatio = floor.bgRatio ? String(floor.bgRatio) : '';
+    const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('class','fp-svg'); svg.setAttribute('viewBox','0 0 100 '+(100/(floor.bgRatio||0.8)).toFixed(2)); svg.setAttribute('preserveAspectRatio','none');
+    svg.innerHTML = floor.vector;
+    fp.prepend(svg);
+    return;
+  }
+  fp.classList.remove('vector');
   if(floor && floor.bg){
     fp.classList.add('hasbg');
     const overlay = document.documentElement.dataset.theme==='dark'
