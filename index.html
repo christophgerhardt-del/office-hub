@@ -272,7 +272,8 @@
   .plan-el.light.bar .pe-sub{display:none}
   .plan-el.light.bar.horiz{flex-direction:row; gap:8px; padding:2px 8px}
   .plan-el.light.bar.horiz .pe-sub{display:inline; font-size:11px; font-weight:600; margin-left:auto}
-  .plan-el.light.bar.narrow .pe-num{display:none}
+  .plan-el.light.bar.narrow .pe-num,.plan-el.light.bar.narrow .pe-sub{display:none}
+  .plan-el.light.bar.horiz.narrow{justify-content:center; padding:2px}
   /* Lampen-Kacheln (Schalter-Liste) */
   .lamp-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px}
   .lamp-tile{display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:14px; border:1.5px solid var(--border); background:var(--card); text-align:left; transition:all .15s ease; width:100%}
@@ -382,6 +383,7 @@
     .lamp-tile{padding:10px 10px; gap:8px; flex-wrap:wrap}
     .lamp-tile .lt-badge{width:30px; height:30px; font-size:13px}
     .lamp-tile .lt-name{font-size:13px}
+    .lamp-tile .lt-state{display:none}
     .lamp-tile .switch{width:44px; height:26px; min-width:44px} .lamp-tile .switch::after{width:20px; height:20px} .lamp-tile .switch.on::after{left:21px}
     .dash-head .btn.small{padding:0 10px}
   }
@@ -2258,7 +2260,7 @@ function renderLightPlan(){
       ? (()=>{
           const horiz = d.plan && d.plan.w > d.plan.h * (state.floors.find(f=>f.id===state.activeFloor)||{}).bgRatio;
           const num = (/(\d+)/.exec(d.name||'')||[])[1] || '';
-          const narrow = !horiz && d.plan && d.plan.w < 7;
+          const narrow = d.plan && (horiz ? d.plan.w < 26 : d.plan.w < 7);
           const b = el('div',{class:'plan-el light bar'+(horiz?' horiz':'')+(narrow?' narrow':'')+(d.lastState?'':' off'), title:`${d.name} – Klick schaltet`},
             el('span',{class:'pe-badge'}, num || '•'),
             el('span',{class:'pe-num'}, horiz ? d.name : ''),
