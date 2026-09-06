@@ -104,12 +104,14 @@
 
   /* ---------- Dashboard ---------- */
   .stat-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:16px}
-  .stat{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; text-align:left; display:flex; align-items:center; gap:14px; transition:transform .12s ease, border-color .12s}
+  .stat{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; text-align:left; display:flex; align-items:center; gap:14px; min-width:0; overflow:hidden; transition:transform .12s ease, border-color .12s}
+  .stat-grid > *{min-width:0}
   .stat:hover{transform:translateY(-2px); border-color:var(--border-strong)}
   .stat .ico{width:42px; height:42px; border-radius:12px; background:var(--accent-soft); color:var(--accent); display:inline-flex; align-items:center; justify-content:center; flex:none}
   .stat .ico .ic{width:21px; height:21px; vertical-align:0}
-  .stat .num{font-size:22px; font-weight:700; letter-spacing:-.4px; line-height:1.1}
-  .stat .lbl{color:var(--muted); font-size:12.5px; margin-top:3px}
+  .stat .num{font-size:22px; font-weight:700; letter-spacing:-.4px; line-height:1.1; overflow-wrap:anywhere}
+  .stat .ico + .num, .stat .num + .lbl{min-width:0}
+  .stat .lbl{color:var(--muted); font-size:12.5px; margin-top:3px; overflow-wrap:anywhere}
   .qa-row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
   .qa-btn{display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:12px; background:var(--accent-soft); color:var(--accent); font-weight:600; font-size:14px; border:1px solid transparent; transition:transform .1s ease, background .12s}
   .qa-btn:hover{transform:translateY(-1px)}
@@ -354,10 +356,10 @@
     </div>
 
     <div class="stat-grid">
-      <button class="stat" data-goto="tasks"><span class="ico"><i class="ic" data-ico="check-square"></i></span><div class="num" id="statTasks">0</div><div class="lbl">Offene Aufgaben</div></button>
-      <button class="stat" data-goto="rooms"><span class="ico"><i class="ic" data-ico="calendar"></i></span><div class="num" id="statRooms">0</div><div class="lbl">Buchungen heute</div></button>
-      <button class="stat" data-goto="shopping"><span class="ico"><i class="ic" data-ico="cart"></i></span><div class="num" id="statShopping">0</div><div class="lbl">Offene Einkäufe</div></button>
-      <button class="stat" data-goto="money"><span class="ico"><i class="ic" data-ico="euro"></i></span><div class="num" id="statMoney">0,00 €</div><div class="lbl">Offene Ausgleichszahlungen</div></button>
+      <button class="stat" data-goto="tasks"><span class="ico"><i class="ic" data-ico="check-square"></i></span><div style="min-width:0"><div class="num" id="statTasks">0</div><div class="lbl">Offene Aufgaben</div></div></button>
+      <button class="stat" data-goto="rooms"><span class="ico"><i class="ic" data-ico="calendar"></i></span><div style="min-width:0"><div class="num" id="statRooms">0</div><div class="lbl">Buchungen heute</div></div></button>
+      <button class="stat" data-goto="shopping"><span class="ico"><i class="ic" data-ico="cart"></i></span><div style="min-width:0"><div class="num" id="statShopping">0</div><div class="lbl">Offene Einkäufe</div></div></button>
+      <button class="stat" data-goto="money"><span class="ico"><i class="ic" data-ico="euro"></i></span><div style="min-width:0"><div class="num" id="statMoney">0,00 €</div><div class="lbl">Offene Ausgleichszahlungen</div></div></button>
     </div>
 
     <div class="card" id="homeNextCard">
