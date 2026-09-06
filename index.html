@@ -1357,15 +1357,17 @@ function renderCloudStatus(){
   const p = $('#cloudStatus'); if(!p) return;
   const cfg = state.shellyCloud;
   if(!cfg.server || !cfg.authKey){ p.textContent = 'Shelly Cloud nicht verbunden'; return; }
-  p.textContent = lastCloudSync ? 'Cloud · Stand '+lastCloudSync.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : 'Cloud · verbinde…';
+  const mode = localMode() ? 'Lokal im Büro-WLAN' : 'Cloud';
+  p.textContent = mode + (lastCloudSync ? ' · Stand '+lastCloudSync.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : ' · verbinde…');
 }
 function renderSettings(){ renderTeam(); }
 async function allLights(on){
   const lights = state.shellys.filter(d=>d.kind!=='cover');
   if(!lights.length){ toast('Noch keine Lampen angelegt – Tab „Smart".'); return; }
-  toast(on ? `💡 Schalte ${lights.length} Lichter ein – dauert ca. ${lights.length} Sekunden…` : `🌙 Schalte ${lights.length} Lichter aus – dauert ca. ${lights.length} Sekunden…`);
-  await Promise.all(lights.map(d => shellyCmd(d, on, true)));   /* Warteschlange hält den Abstand ein */
-  toast(on ? `💡 Alle ${lights.length} Lichter eingeschaltet.` : `🌙 Alle ${lights.length} Lichter ausgeschaltet.`);
+  const viaLocal = localMode() && lights.every(d=>d.ip);
+  toast(on ? (viaLocal ? 'Schalte alle Lichter ein…' : `Schalte ${lights.length} Lichter ein – über die Cloud ca. ${lights.length} Sekunden…`) : (viaLocal ? 'Schalte alle Lichter aus…' : `Schalte ${lights.length} Lichter aus – über die Cloud ca. ${lights.length} Sekunden…`));
+  await Promise.all(lights.map(d => shellyCmd(d, on, true)));   /* lokal parallel & sofort, Cloud über die Warteschlange */
+  toast(on ? `Alle ${lights.length} Lichter eingeschaltet.` : `Alle ${lights.length} Lichter ausgeschaltet.`);
   scheduleCloudRefresh();
 }
 let cloudRefreshTimer = null;
@@ -2414,8 +2416,9 @@ async function shellyCloudLoad(showToast, withNames){
       const kind = covers.length ? 'cover' : (chans.length ? 'switch' : 'other');
       const base = names[id] || {};
       const chanNames = chans.map((_,i)=> i===0 ? base.name : ((names[id+'_'+i]||{}).name || (base.name ? base.name+' (Kanal 2)' : '')));
+      const ip = (st.wifi && st.wifi.sta_ip) || (st.wifi_sta && st.wifi_sta.ip) || '';
       return {id, kind, code: base.type || st.code || (st.relays ? 'Gen 1' : ''), name: base.name || '', room: base.room || '',
-        chans, chanNames, coverState: covers.length ? st[covers[0]].state : null, updated: (st._updated||'').slice(11,16)};
+        chans, chanNames, coverState: covers.length ? st[covers[0]].state : null, updated: (st._updated||'').slice(11,16), ip, gen: st.relays ? 'gen1' : 'gen2'};
     });
     let changed = false, added = 0, renamed = 0;
     /* Automatisch verknüpfen: alle Schalter/Rollläden im gewählten Raum werden Lampen/Rollläden, Namen folgen der Shelly-App */
@@ -2442,6 +2445,7 @@ async function shellyCloudLoad(showToast, withNames){
       if(d.mode !== 'cloud') continue;
       const c = cloudDevices.find(x=>x.id===d.cloudId);
       if(!c) continue;
+      if(c.ip && (d.ip !== c.ip || d.gen !== c.gen)){ d.ip = c.ip; d.gen = c.gen; changed = true; }
       if(d.kind === 'cover'){ if(c.coverState && c.coverState !== d.coverState){ d.coverState = c.coverState; changed = true; } }
       else{ const on = c.chans[d.channel||0]; if(on !== undefined && on !== d.lastState){ d.lastState = on; changed = true; } }
     }
@@ -2547,11 +2551,34 @@ $('#shCloudSave').addEventListener('click', ()=>{
   shellyCloudLoad(true, true);
 });
 setInterval(()=>{ if(document.visibilityState==='visible' && Date.now() - shellyLastCall > 5000) shellyCloudLoad(false); }, 45000);
+/* Lokal vs. Cloud: Direktzugriff per IP nur möglich, wenn die App selbst per http:// aus dem Büro-Netz geladen wurde
+   (Browser blockieren http-Aufrufe aus https-Seiten). Schlägt lokal fehl, pausiert der Versuch 60 s und die Cloud übernimmt. */
+let localFailedAt = 0, localLastOk = 0;
+function canLocal(){ return location.protocol === 'http:' && !/github\.io/.test(location.host) && Date.now() - localFailedAt > 60000; }
+function localMode(){ return location.protocol === 'http:' && state.shellys.some(d=>d.ip) && Date.now() - localFailedAt > 60000; }
+async function shellyLocalSet(d, turnOn){
+  if(!d.ip) return false;
+  const ch = d.channel || 0;
+  const url = d.gen === 'gen1' ? `http://${d.ip}/relay/${ch}?turn=${turnOn?'on':'off'}` : `http://${d.ip}/rpc/Switch.Set?id=${ch}&on=${turnOn}`;
+  const ctrl = new AbortController(); const t = setTimeout(()=>ctrl.abort(), 1500);
+  try{ await fetch(url, {mode:'no-cors', signal:ctrl.signal}); clearTimeout(t); localLastOk = Date.now(); return true; }
+  catch(e){ clearTimeout(t); localFailedAt = Date.now(); return false; }
+}
 async function shellyCmd(d, turnOn, quiet){
   if(d.mode === 'cloud'){
     const cfg = state.shellyCloud;
     if(!cfg.server || !cfg.authKey){ toast('Shelly-Cloud ist nicht konfiguriert (Smart → Shelly Cloud).'); return; }
     d.lastState = turnOn; pendingIds.add(d.id); save(); renderAll();
+    if(canLocal() && d.ip){
+      const ok = await shellyLocalSet(d, turnOn);
+      if(ok){
+        pendingIds.delete(d.id); renderAll();
+        if(!quiet) toast(`${d.name} ${turnOn?'eingeschaltet':'ausgeschaltet'} (lokal).`);
+        if(!quiet) scheduleCloudRefresh();
+        return;
+      }
+      if(!quiet) toast('Lokal nicht erreichbar – schalte über die Cloud…');
+    }
     try{
       const r = await shellyCloudCall({server:cfg.server, authKey:cfg.authKey, op:'control', id:d.cloudId, channel:d.channel||0, turn: turnOn?'on':'off'});
       if(r.isok){ if(!quiet) toast(`${d.name} ${turnOn?'eingeschaltet':'ausgeschaltet'}.`); }
@@ -2659,7 +2686,7 @@ function renderSmart(){
       el('span',{class:'ic', style:'width:22px;height:22px;color:'+(isCover?'var(--accent)':(d.lastState?'var(--amber)':'var(--faint)'))}, ico(isCover ? 'layers' : 'lightbulb').firstChild),
       el('div',{class:'row-main'},
         el('div',{class:'row-title'}, d.name),
-        el('div',{class:'row-meta'}, d.mode==='cloud' ? el('span',{}, isCover ? 'Cloud · '+(COVER_LABEL[d.coverState]||'') : 'Cloud · Kanal '+((d.channel||0)+1)) : el('span',{}, d.ip), d.mode==='cloud' ? null : el('span',{}, d.gen==='gen1'?'Gen 1':'Gen 2+')),
+        el('div',{class:'row-meta'}, d.mode==='cloud' ? el('span',{}, isCover ? 'Cloud · '+(COVER_LABEL[d.coverState]||'') : 'Cloud · Kanal '+((d.channel||0)+1)) : el('span',{}, d.ip), (d.mode==='cloud' && d.ip) ? el('span',{}, 'lokal '+d.ip) : null, d.mode==='cloud' ? null : el('span',{}, d.gen==='gen1'?'Gen 1':'Gen 2+')),
         isCover ? el('div',{style:'margin-top:6px'}, coverButtons(d)) : null),
       (()=>{ const fs = el('select',{style:'max-width:120px; min-width:90px', title:'Etage im Lageplan'});
         for(const f of state.floors){ const o = el('option',{value:f.id}, f.name); if(f.id===d.floor) o.selected = true; fs.append(o); }

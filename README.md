@@ -31,3 +31,19 @@ Oder `index.html` einfach direkt im Browser öffnen (PWA-Installation und Servic
 - Persistenz: `localStorage` (`officehub.v1`), optional Sync über Supabase REST (Tabelle `office_kv`, Last-Write-Wins pro Datenbereich)
 - Smart-Office-Befehle gehen als `fetch` mit `mode:'no-cors'` direkt an die Geräte-IPs im LAN – Statusrückmeldung ist daher optimistisch
 - Hinweis: Bei HTTPS-Hosting blockiert der Browser die lokalen HTTP-Gerätebefehle (Mixed Content); lokal via `http://localhost` funktioniert alles
+
+## Lokal im Büro (Shellys direkt per IP)
+
+Die veröffentlichte Website läuft über HTTPS – Browser erlauben von dort keine Befehle an `http://192.168.…`, deshalb schaltet sie Lampen über die Shelly-Cloud (ca. 1 Sekunde pro Lampe, Limit 1 Anfrage/s).
+
+Wird die App dagegen **per HTTP aus dem Büro-Netz** geladen, schaltet sie Lampen **direkt per IP** (sofort, parallel, ohne Limit) und weicht nur auf die Cloud aus, wenn ein Gerät lokal nicht erreichbar ist. Die IPs lernt die App automatisch aus der Shelly-Cloud.
+
+Einrichtung auf einem Rechner, der im Büro-WLAN dauerhaft läuft (Mac, NAS, Raspberry Pi):
+
+```bash
+git clone https://github.com/christophgerhardt-del/office-hub.git
+cd office-hub && sh start-local.sh
+# → im Büro: http://<IP-des-Rechners>:8741  (Login wie gewohnt)
+```
+
+Von unterwegs weiterhin die Website nutzen. Beide Varianten teilen dieselben Daten (Supabase).
