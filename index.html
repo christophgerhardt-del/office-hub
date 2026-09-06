@@ -265,7 +265,7 @@
   .plan-el.light.bar{height:auto; aspect-ratio:auto; border-radius:7px; padding:2px; gap:0; background:var(--card); border:1.5px solid var(--track); color:var(--muted); box-shadow:0 1px 3px rgba(15,23,42,.12); z-index:2}
   .plan-el.light.bar:not(.off){background:linear-gradient(180deg,#fff7d6 0%,#fde68a 55%,#fcd34d 100%); border-color:#f59e0b; color:#92400e; box-shadow:0 0 0 4px rgba(245,158,11,.14), 0 0 34px 12px rgba(251,191,36,.45), inset 0 0 12px rgba(255,255,255,.7)}
   .plan-el.light.bar .pe-ico{width:16px; height:16px}
-  .plan-el.light.bar .pe-num{font-size:12px; font-weight:700; line-height:1}
+  .plan-el.light.bar .pe-num{font-size:12px; font-weight:700; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%}
   .plan-el.light.bar .pe-sub{display:none}
   .plan-el.light.bar.horiz{flex-direction:row; gap:6px}
   .plan-el.light.bar.horiz .pe-sub{display:inline; font-size:10px}
@@ -356,7 +356,8 @@
     .date-nav input[type=date]{max-width:none}
     #miniModal{left:0; right:0; bottom:0; top:auto; transform:none; width:100%; max-width:none; border-radius:18px 18px 0 0; max-height:88vh; padding-bottom:calc(16px + env(safe-area-inset-bottom))}
     #miniModal.show{animation:sheet .2s ease}
-    .plan-el.light{min-width:46px}
+    .plan-el.light:not(.bar){min-width:46px}
+    .plan-el.light.bar{min-width:20px}
     .dash-head .btn.small{padding:0 10px}
   }
   @keyframes sheet{from{transform:translateY(30px); opacity:0}to{transform:none; opacity:1}}
