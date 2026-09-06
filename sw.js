@@ -1,5 +1,5 @@
 /* OfficeHub Service Worker – Netzwerk zuerst (ohne HTTP-Cache), Cache nur als Offline-Fallback */
-const VERSION = 'officehub-v3';
+const VERSION = 'officehub-v4';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
