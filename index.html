@@ -422,43 +422,8 @@
       <h3><i class="ic" data-ico="users"></i>Team</h3>
       <p class="sub" id="teamIdentity" style="margin-bottom:10px"></p>
       <ul class="rows" id="memberList"></ul>
-      <form id="memberForm" class="form-row" style="margin-top:10px">
-        <input type="text" id="memberName" class="grow" placeholder="Name des Kollegen / der Kollegin" autocomplete="off">
-        <input type="password" id="memberPin" placeholder="Start-PIN (4–8)" autocomplete="new-password" style="max-width:170px">
-        <button class="btn ghost" type="submit">＋ Kollege hinzufügen</button>
-      </form>
       <p class="hint" id="teamHint"></p>
-    </div>
-
-    <div class="card">
-      <h3><i class="ic" data-ico="refresh"></i>Team-Sync <span class="sync-dot" id="syncDot"></span></h3>
-      <p class="sub" id="syncStatus" style="margin-bottom:10px">Aus – Daten bleiben nur in diesem Browser.</p>
-      <div class="form-row" style="margin-bottom:8px">
-        <div class="grow"><label class="field-lbl" for="syncUrl">Supabase-URL</label>
-          <input type="text" id="syncUrl" placeholder="https://xxxx.supabase.co" autocomplete="off"></div>
-        <div><label class="field-lbl" for="syncKey">Anon-Key</label>
-          <input type="password" id="syncKey" placeholder="eyJ…" autocomplete="off"></div>
-      </div>
-      <div class="form-row">
-        <div class="grow"><label class="field-lbl" for="syncOffice">Büro-Code (geheim, mit dem Team teilen)</label>
-          <input type="text" id="syncOffice" placeholder="Code erzeugen oder einfügen" autocomplete="off"></div>
-        <button class="btn ghost small" id="syncGenCode" type="button" style="align-self:flex-end"><i class="ic" data-ico="dice"></i>Code erzeugen</button>
-        <button class="btn small" id="syncToggle" type="button" style="align-self:flex-end">Aktivieren</button>
-      </div>
-      <details class="sub-details">
-        <summary>Einmalige Einrichtung (Supabase-Projekt)</summary>
-        <p class="hint">1. Auf supabase.com ein (kostenloses) Projekt anlegen. 2. Im SQL-Editor dieses Setup ausführen. 3. Projekt-URL + Anon-Key oben eintragen, Code erzeugen, aktivieren. Alle Geräte mit gleicher URL + gleichem Büro-Code teilen dann live Aufgaben, Listen, Buchungen &amp; Co.</p>
-        <pre class="sql">create table if not exists office_kv (
-  office_id uuid not null,
-  key text not null,
-  value jsonb,
-  updated_at timestamptz default now(),
-  primary key (office_id, key)
-);
-alter table office_kv enable row level security;
-create policy "office_kv_all" on office_kv
-  for all using (true) with check (true);</pre>
-      </details>
+      <p class="hint" id="syncStatus" style="margin-top:6px"></p>
     </div>
 
     <div class="card">
@@ -468,7 +433,7 @@ create policy "office_kv_all" on office_kv
         <button class="btn ghost small" id="importBtn"><i class="ic" data-ico="upload"></i>Backup importieren</button>
       </div>
       <input type="file" id="importFile" accept="application/json" style="display:none">
-      <p class="hint">Ohne Team-Sync liegen alle Daten lokal in diesem Browser. Mit dem Backup nimmst du sie auf ein anderes Gerät mit.</p>
+      <p class="hint">Sicherheitskopie aller Büro-Daten als Datei.</p>
     </div>
   </section>
 
@@ -930,13 +895,59 @@ $('#themeBtn').addEventListener('click', ()=>{
   applyTheme(theme);
 });
 
+/* ================= Büro (fest gekoppelt) ================= */
+const OFFICE_ID = '53a53d64-7dd2-44e8-aaf3-0d451c37e6cb';
+const OFFICE_USERS = [
+  {name:'Christoph', email:'christoph@officehub.local', role:'admin',  memberId:'4bac2a041a06dda4e27'},
+  {name:'Max',       email:'max@officehub.local',       role:'member', memberId:'7864a26a1a076b2297f'},
+  {name:'Freddy',    email:'freddy@officehub.local',    role:'member', memberId:'2c0d40741a076b2297f'},
+];
+const SESSION_KEY = 'officehub.session';
+function getSession(){ try{ return JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); }catch(e){ return null; } }
+function setSession(sess){ if(sess) localStorage.setItem(SESSION_KEY, JSON.stringify(sess)); else localStorage.removeItem(SESSION_KEY); }
+async function authRequest(path, body, bearer){
+  const res = await fetch(SYNC_DEFAULTS.url+'/auth/v1/'+path, {
+    method: body ? 'POST' : 'GET',
+    headers: {apikey: SYNC_DEFAULTS.key, 'Content-Type':'application/json', ...(bearer ? {Authorization:'Bearer '+bearer} : {})},
+    body: body ? JSON.stringify(body) : undefined
+  });
+  let data = {}; try{ data = await res.json(); }catch(e){}
+  return {ok: res.ok, status: res.status, data};
+}
+async function loginWithPin(email, pin){
+  const r = await authRequest('token?grant_type=password', {email, password: pin});
+  if(!r.ok) return {ok:false, msg: r.status===400 ? 'Falsche PIN.' : 'Anmeldung fehlgeschlagen ('+(r.data.error_description||r.data.msg||r.status)+').'};
+  setSession({access_token:r.data.access_token, refresh_token:r.data.refresh_token, expires_at: Date.now() + (r.data.expires_in||3600)*1000, user:{id:r.data.user.id, email}});
+  return {ok:true};
+}
+let refreshing = null;
+async function ensureSession(){
+  const sess = getSession(); if(!sess) return null;
+  if(Date.now() < sess.expires_at - 90000) return sess;
+  if(!refreshing){
+    refreshing = authRequest('token?grant_type=refresh_token', {refresh_token: sess.refresh_token}).then(r=>{
+      if(!r.ok){ setSession(null); return null; }
+      const ns = {access_token:r.data.access_token, refresh_token:r.data.refresh_token, expires_at: Date.now() + (r.data.expires_in||3600)*1000, user: sess.user};
+      setSession(ns); return ns;
+    }).finally(()=>{ refreshing = null; });
+  }
+  return refreshing;
+}
+async function changeOwnPin(newPin){
+  const sess = await ensureSession(); if(!sess) return {ok:false, msg:'Nicht angemeldet.'};
+  const res = await fetch(SYNC_DEFAULTS.url+'/auth/v1/user', {method:'PUT', headers:{apikey:SYNC_DEFAULTS.key, Authorization:'Bearer '+sess.access_token, 'Content-Type':'application/json'}, body: JSON.stringify({password:newPin})});
+  if(res.ok) return {ok:true};
+  let d={}; try{ d=await res.json(); }catch(e){}
+  return {ok:false, msg: d.msg || d.error_description || 'PIN konnte nicht geändert werden.'};
+}
+
 /* ================= Team-Sync (Supabase REST) ================= */
 const SYNC_KEYS = ['tasks','lists','people','members','expenses','settledLog','floors','rooms','bookings','shellys','shellyCloud','nukis','itemHistory'];
 let saveHashes = {}, syncDirty = {}, lastLocalEdit = {}, pushTimer = null, pullTimer = null;
 function hashStr(s){ let h=5381; for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))|0; } return h; }
 const collHash = k => hashStr(JSON.stringify(state[k]));
 function initSyncHashes(){ for(const k of SYNC_KEYS) saveHashes[k] = collHash(k); }
-function syncReady(){ return state.sync.enabled && state.sync.url && state.sync.key && state.sync.office; }
+function syncReady(){ return !!getSession(); }
 function syncMarkChanges(){
   for(const k of SYNC_KEYS){
     const h = collHash(k);
@@ -952,31 +963,37 @@ function schedulePush(){
   clearTimeout(pushTimer);
   pushTimer = setTimeout(syncPush, 1500);
 }
+let syncBearer = '';
 function syncHeaders(){
-  return {apikey: state.sync.key, Authorization: 'Bearer '+state.sync.key, 'Content-Type':'application/json'};
+  return {apikey: SYNC_DEFAULTS.key, Authorization: 'Bearer '+syncBearer, 'Content-Type':'application/json'};
 }
-function syncBase(){ return state.sync.url.replace(/\/+$/,''); }
+function syncBase(){ return SYNC_DEFAULTS.url; }
+async function syncAuth(){
+  const sess = await ensureSession();
+  if(!sess){ if($('#loginScreen').hidden) logout(); return false; }
+  syncBearer = sess.access_token; return true;
+}
 function setSyncStatus(txt, ok){
-  $('#syncStatus').textContent = txt;
-  const d = $('#syncDot');
-  d.className = 'sync-dot' + (ok===true ? ' ok' : ok===false ? ' err' : '');
+  const st = $('#syncStatus'); if(st) st.textContent = 'Büro-Verbindung: '+txt;
 }
 async function syncPush(){
   if(!syncReady()) return;
   const keys = Object.keys(syncDirty);
   if(!keys.length) return;
-  const rows = keys.map(k => ({office_id: state.sync.office, key: k, value: state[k], updated_at: new Date().toISOString()}));
+  if(!await syncAuth()) return;
+  const rows = keys.map(k => ({office_id: OFFICE_ID, key: k, value: state[k], updated_at: new Date().toISOString()}));
   try{
     const res = await fetch(syncBase()+'/rest/v1/office_kv?on_conflict=office_id,key', {
       method:'POST',
       headers: {...syncHeaders(), Prefer:'resolution=merge-duplicates'},
       body: JSON.stringify(rows)
     });
+    if(res.status===401){ logout(); return; }
     if(!res.ok) throw new Error('HTTP '+res.status);
     for(const k of keys) delete syncDirty[k];
     setSyncStatus('Synchron ✓ · '+new Date().toLocaleTimeString('de-DE'), true);
   }catch(e){
-    setSyncStatus('Übertragung fehlgeschlagen – neuer Versuch folgt.', false);
+    setSyncStatus('Übertragung fehlgeschlagen – neuer Versuch folgt', false);
     schedulePush();
   }
 }
@@ -988,8 +1005,10 @@ function applyRemote(key, value){
 }
 async function syncPull(){
   if(!syncReady()) return;
+  if(!await syncAuth()) return;
   try{
-    const res = await fetch(syncBase()+'/rest/v1/office_kv?office_id=eq.'+encodeURIComponent(state.sync.office)+'&select=key,value,updated_at', {headers: syncHeaders()});
+    const res = await fetch(syncBase()+'/rest/v1/office_kv?office_id=eq.'+OFFICE_ID+'&select=key,value,updated_at', {headers: syncHeaders()});
+    if(res.status===401){ logout(); return; }
     if(!res.ok) throw new Error('HTTP '+res.status);
     const rows = await res.json();
     let changed = false;
@@ -1005,15 +1024,15 @@ async function syncPull(){
       }
     }
     if(changed) renderAll();
-    setSyncStatus('Synchron ✓ · '+new Date().toLocaleTimeString('de-DE'), true);
+    setSyncStatus('synchron · '+new Date().toLocaleTimeString('de-DE'), true);
   }catch(e){
-    setSyncStatus('Keine Verbindung zum Sync-Server.', false);
+    setSyncStatus('keine Verbindung', false);
   }
 }
 function startSync(){
   clearInterval(pullTimer);
-  if(!syncReady()){ setSyncStatus('Aus – Daten bleiben nur in diesem Browser.'); return Promise.resolve(); }
-  setSyncStatus('Verbinde…');
+  if(!syncReady()){ setSyncStatus('nicht angemeldet'); return Promise.resolve(); }
+  setSyncStatus('verbinde…');
   const first = syncPull();
   pullTimer = setInterval(()=>{ if(document.visibilityState==='visible') syncPull(); }, 8000);
   return first;
@@ -1025,31 +1044,7 @@ const SYNC_DEFAULTS = {
   url: 'https://nocsjyzmnskbyccrjayx.supabase.co',
   key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vY3NqeXptbnNrYnljY3JqYXl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDI4ODgsImV4cCI6MjA5NzI3ODg4OH0.RnIq-jbr6JKz_Z3etwc2rX1O6RXh5cidwm9mkRFrnw4'
 };
-function renderSyncUI(){
-  $('#syncUrl').value = state.sync.url || SYNC_DEFAULTS.url;
-  $('#syncKey').value = state.sync.key || SYNC_DEFAULTS.key;
-  $('#syncOffice').value = state.sync.office;
-  $('#syncToggle').innerHTML = state.sync.enabled ? icoHtml('pause')+'Deaktivieren' : icoHtml('play')+'Aktivieren';
-}
-$('#syncGenCode').addEventListener('click', ()=>{
-  $('#syncOffice').value = (crypto.randomUUID ? crypto.randomUUID() : uid()+uid());
-  toast('Büro-Code erzeugt – diesen Code auf allen Geräten eintragen.');
-});
-$('#syncToggle').addEventListener('click', ()=>{
-  if(state.sync.enabled){
-    state.sync.enabled = false;
-    persist(); renderSyncUI(); startSync();
-    toast('Team-Sync deaktiviert.');
-    return;
-  }
-  const url = $('#syncUrl').value.trim(), key = $('#syncKey').value.trim(), office = $('#syncOffice').value.trim();
-  if(!url || !key || !office){ toast('Bitte URL, Anon-Key und Büro-Code ausfüllen.'); return; }
-  state.sync = {url, key, office, enabled:true};
-  persist(); renderSyncUI();
-  for(const k of SYNC_KEYS){ syncDirty[k] = true; lastLocalEdit[k] = lastLocalEdit[k]||1; }
-  startSync(); schedulePush();
-  toast('Team-Sync aktiviert. 🔄');
-});
+function renderSyncUI(){}
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && syncReady()) syncPull(); });
 
 
@@ -1108,9 +1103,11 @@ function setIdentityMember(m){
   localStorage.setItem(IDENTITY_KEY, JSON.stringify({memberId: m.id}));
 }
 function currentMember(){
-  const id = getIdentity();
-  if(!id) return null;
-  return state.members.find(m=>m.id===id.memberId) || null;
+  const sess = getSession(); if(!sess) return null;
+  const byAuth = state.members.find(m=>m.authId===sess.user.id);
+  if(byAuth) return byAuth;
+  const u = OFFICE_USERS.find(x=>x.email===sess.user.email);
+  return u ? (state.members.find(m=>m.id===u.memberId) || {id:u.memberId, name:u.name, role:u.role}) : null;
 }
 function isAdmin(){ const m = currentMember(); return !!m && m.role==='admin'; }
 function adminMember(){ return state.members.find(m=>m.role==='admin') || null; }
@@ -1175,46 +1172,53 @@ let loginSel = null;
 function showLogin(){
   const ls = $('#loginScreen');
   const wrap = $('#loginUsers'); wrap.innerHTML = '';
-  if(!state.members.length){ ls.hidden = true; return; }
-  if(!loginSel || !state.members.some(m=>m.id===loginSel)) loginSel = state.members[0].id;
-  for(const m of state.members){
-    wrap.append(el('button',{type:'button', class:'login-user'+(m.role==='admin'?' admin':'')+(m.id===loginSel?' sel':''), onclick:()=>{ loginSel = m.id; showLogin(); setTimeout(()=>$('#loginPin').focus(), 30); }},
-      el('span',{class:'avatar'}, m.name.slice(0,1).toUpperCase()),
-      el('span',{}, m.name), m.role==='admin' ? el('span',{class:'badge hoch'},'Admin') : null));
+  if(!loginSel || !OFFICE_USERS.some(u=>u.email===loginSel)) loginSel = OFFICE_USERS[0].email;
+  for(const u of OFFICE_USERS){
+    wrap.append(el('button',{type:'button', class:'login-user'+(u.role==='admin'?' admin':'')+(u.email===loginSel?' sel':''), onclick:()=>{ loginSel = u.email; showLogin(); setTimeout(()=>$('#loginPin').focus(), 30); }},
+      el('span',{class:'avatar'}, u.name.slice(0,1).toUpperCase()),
+      el('span',{}, u.name), u.role==='admin' ? el('span',{class:'badge hoch'},'Admin') : null));
   }
   $('#loginErr').classList.remove('show');
   ls.hidden = false;
 }
-$('#loginForm').addEventListener('submit', e=>{
+let loggingIn = false;
+$('#loginForm').addEventListener('submit', async e=>{
   e.preventDefault();
-  const m = state.members.find(x=>x.id===loginSel); if(!m) return;
-  const pin = $('#loginPin').value;
+  if(loggingIn) return;
+  const u = OFFICE_USERS.find(x=>x.email===loginSel); if(!u) return;
+  const pin = $('#loginPin').value.trim();
   const err = $('#loginErr');
-  if(m.pinHash){
-    if(!pin){ err.textContent = 'Bitte PIN eingeben.'; err.classList.add('show'); return; }
-    if(pinHash(pin, m.id) !== m.pinHash){ err.textContent = 'Falsche PIN.'; err.classList.add('show'); $('#loginPin').value=''; return; }
-  }
+  if(!pin){ err.textContent = 'Bitte PIN eingeben.'; err.classList.add('show'); return; }
+  loggingIn = true; $('#loginSub').textContent = 'Anmelden…';
+  const r = await loginWithPin(u.email, pin);
+  loggingIn = false; $('#loginSub').textContent = 'Wähle dein Profil und gib deine PIN ein.';
+  if(!r.ok){ err.textContent = r.msg; err.classList.add('show'); $('#loginPin').value=''; return; }
   err.classList.remove('show'); $('#loginPin').value = '';
-  setIdentityMember(m); $('#loginScreen').hidden = true; renderAll();
-  toast(`Willkommen, ${m.name}! ${m.role==='admin' ? '👑' : ''}`);
-  if(!m.pinHash) setTimeout(()=>{ toast('Dein Profil hat noch keine PIN – bitte unter Einstellungen → Team setzen.'); }, 2500);
+  setIdentityMember({id:u.memberId});
+  $('#loginScreen').hidden = true;
+  await startSync();
+  renderAll();
+  toast(`Willkommen, ${u.name}!`);
 });
 function logout(){
+  setSession(null);
   localStorage.removeItem(IDENTITY_KEY);
+  clearInterval(pullTimer);
   renderAll(); showLogin();
 }
 function openProfileModal(){ showLogin(); }
 function openPinSetModal(m, title){
-  const p1 = el('input',{type:'password', placeholder:'Neue PIN (4–8 Zeichen)', autocomplete:'new-password'});
+  const p1 = el('input',{type:'password', placeholder:'Neue PIN (mind. 6 Zeichen)', autocomplete:'new-password'});
   const p2 = el('input',{type:'password', placeholder:'PIN wiederholen', autocomplete:'new-password'});
   openModal(
-    modalHead(title || ('🔐 PIN für '+m.name)),
-    el('form',{onsubmit:e=>{
+    modalHead(title || '🔐 Meine PIN ändern'),
+    el('form',{onsubmit:async e=>{
       e.preventDefault();
-      if(p1.value.length < 4 || p1.value.length > 8){ toast('Die PIN braucht 4–8 Zeichen.'); return; }
+      if(p1.value.length < 6 || p1.value.length > 12){ toast('Die PIN braucht 6–12 Zeichen.'); return; }
       if(p1.value !== p2.value){ toast('Die PINs stimmen nicht überein.'); return; }
-      m.pinHash = pinHash(p1.value, m.id);
-      save(); closeModal(); renderAll(); toast(`PIN für ${m.name} gespeichert. 🔐`);
+      const r = await changeOwnPin(p1.value);
+      if(!r.ok){ toast(r.msg); return; }
+      closeModal(); toast('Deine PIN wurde geändert. 🔐');
     }},
       el('div',{class:'form-row', style:'margin-bottom:12px'}, p1, p2),
       el('button',{class:'btn', type:'submit'},'Speichern')));
@@ -1265,20 +1269,15 @@ function renderTeam(){
       el('button',{class:'btn ghost small', style:'margin-left:8px', onclick:openPinChangeModal},'Meine PIN ändern'),
       ' ', el('button',{class:'btn ghost small', onclick:logout},'Abmelden'));
   }else{
-    idLine.append(
-      'Noch kein Profil gewählt. ',
-      el('button',{class:'btn small', onclick:()=> admin ? openProfileModal() : openAdminSetupModal()}, admin ? 'Profil wählen' : 'Admin einrichten'));
+    idLine.append('Nicht angemeldet. ', el('button',{class:'btn small', onclick:showLogin},'Anmelden'));
   }
   const ul = $('#memberList'); ul.innerHTML = '';
-  for(const m of state.members){
+  const list = state.members.length ? state.members : OFFICE_USERS.map(u=>({id:u.memberId, name:u.name, role:u.role}));
+  for(const m of list){
     const row = el('li',{},
       el('span',{class:'ic', style:'width:20px;height:20px;color:'+(m.role==='admin'?'var(--amber)':'var(--faint)')}, ico(m.role==='admin' ? 'crown' : 'user').firstChild),
       el('div',{class:'row-main'}, el('div',{class:'row-title'}, m.name)),
       el('span',{class:'badge '+(m.role==='admin'?'hoch':'neutral')}, m.role==='admin' ? 'Admin' : 'Mitglied'));
-    if(isAdmin()){
-      row.append(el('button',{class:'icon-btn blue', 'aria-label':`PIN von ${m.name} setzen`, title:'PIN setzen/zurücksetzen', onclick:()=>openPinSetModal(m)}, ico('pencil')));
-      if(!m.pinHash) row.append(el('span',{class:'badge mittel'},'keine PIN'));
-    }
     if(isAdmin() && m.role!=='admin'){
       row.append(el('button',{class:'icon-btn','aria-label':`${m.name} entfernen`, onclick:()=>{
         const used = state.expenses.some(x=>x.payer===m.name || x.parts.includes(m.name));
@@ -1293,27 +1292,8 @@ function renderTeam(){
   if(!state.members.length){
     ul.append(el('li',{}, el('span',{class:'row-meta'},'Noch keine Mitglieder.')));
   }
-  $('#memberForm').style.display = isAdmin() ? '' : 'none';
-  $('#teamHint').textContent = isAdmin()
-    ? 'Nur du als Admin kannst Kollegen hinzufügen oder entfernen. Jeder meldet sich mit Name + PIN an; über den Stift setzt du eine PIN zurück.'
-    : admin ? `Kollegen hinzufügen kann nur der Admin (${admin.name}).` : '';
+  $('#teamHint').textContent = 'Das Team ist fest auf diese drei Nutzer festgelegt. Jeder meldet sich mit Name + PIN an; PIN vergessen → Christoph kann sie zurücksetzen lassen.';
 }
-$('#memberForm').addEventListener('submit', e=>{
-  e.preventDefault();
-  if(!isAdmin()){ toast('Nur der Admin kann Kollegen hinzufügen.'); return; }
-  const name = $('#memberName').value.trim();
-  if(!name){ toast('Bitte einen Namen eingeben.'); return; }
-  if(state.members.some(m=>m.name.toLowerCase()===name.toLowerCase())){ toast(`„${name}“ gibt es schon.`); return; }
-  const pin = $('#memberPin').value;
-  if(pin.length < 4 || pin.length > 8){ toast('Bitte eine Start-PIN mit 4–8 Zeichen vergeben.'); return; }
-  const nm = {id:uid(), name, role:'member'};
-  nm.pinHash = pinHash(pin, nm.id);
-  state.members.push(nm);
-  save(); renderAll();
-  $('#memberName').value = ''; $('#memberPin').value = '';
-  toast(`„${name}“ zum Team hinzugefügt. 👥`);
-});
-
 /* ================= Navigation ================= */
 const VIEWS = [
   {id:'home',     label:'Start',     ico:'home'},
@@ -1426,7 +1406,7 @@ $('#importFile').addEventListener('change', e=>{
       if(!data || typeof data !== 'object' || !Array.isArray(data.tasks)) throw new Error('bad');
       snapshot();
       state = Object.assign(defaults(), data);
-      save(); renderAll(); renderSyncUI();
+      save(); renderAll();
       toast('Backup importiert.', true);
     }catch(err){ toast('Datei ist kein gültiges OfficeHub-Backup.'); }
     e.target.value = '';
@@ -2798,25 +2778,15 @@ $('#expDate').value = todayISO();
 initSyncHashes();
 renderSyncUI();
 hydrateIcons();
+/* Fest an das Büro gekoppelt – alte Link-Parameter werden ignoriert */
+state.sync = {url: SYNC_DEFAULTS.url, key: SYNC_DEFAULTS.key, office: OFFICE_ID, enabled: true};
+if(location.search) history.replaceState(null, '', location.pathname);
 go('home');
-/* Verbindungs-Link: ?office=<Büro-Code> verbindet dieses Gerät automatisch */
-let joinedViaLink = false;
-try{
-  const params = new URLSearchParams(location.search);
-  const code = (params.get('office')||'').trim();
-  if(code){
-    state.sync = {url: SYNC_DEFAULTS.url, key: SYNC_DEFAULTS.key, office: code, enabled: true};
-    persist(); renderSyncUI();
-    history.replaceState(null, '', location.pathname);
-    joinedViaLink = true;
-  }
-}catch(e){}
-startSync().then(()=>{
-  if(joinedViaLink) toast('Mit deinem Büro verbunden – alle Daten sind da. ✅');
-  shellyCloudLoad(false);
-  if(!adminMember()) openAdminSetupModal();
-  else if(!currentMember()) showLogin();
-});
+if(!getSession()){
+  showLogin();
+}else{
+  startSync().then(()=>{ shellyCloudLoad(false); if(!currentMember()) logout(); });
+}
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   let hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', ()=>{ if(hadController) location.reload(); hadController = true; });
