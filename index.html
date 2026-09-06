@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>OfficeHub – Büro organisieren</title>
-<meta name="theme-color" content="#1f4e8c">
+<meta name="theme-color" content="#ffffff">
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="OfficeHub">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗂️</text></svg>">
 <style>
@@ -89,7 +89,29 @@
   .card h3{font-size:14.5px; font-weight:600; margin-bottom:14px; display:flex; align-items:center; letter-spacing:-.1px}
   .card h3 .ic{width:18px; height:18px; vertical-align:0}
   .hint{font-size:12.5px; color:var(--muted); margin-top:12px; line-height:1.55}
-  @media(max-width:767px){ .card{padding:16px} h2{font-size:21px} }
+  @media(max-width:767px){
+    .card{padding:14px; border-radius:14px; margin-bottom:12px}
+    h2{font-size:21px} .sub{margin-bottom:14px}
+    input[type=text],input[type=password],input[type=date],input[type=number],select{font-size:16px; height:44px}
+    .btn{height:44px} .btn.small{height:38px} .chip{height:36px}
+    .form-row > *{min-width:100%}
+    .form-row > .btn,.form-row > .btn.small{min-width:0; width:100%}
+    .stat-grid{grid-template-columns:1fr 1fr; gap:10px}
+    .stat{padding:12px 14px; gap:10px} .stat .ico{width:36px; height:36px} .stat .num{font-size:19px} .stat .lbl{font-size:11.5px}
+    .qa-btn.big{min-width:100%; padding:15px}
+    .status-pill{width:100%; text-align:center}
+    ul.rows li{gap:10px}
+    .row-main{min-width:120px}
+    .icon-btn{width:40px; height:40px; min-width:40px}
+    .switch{width:52px; height:30px; min-width:52px} .switch::after{width:24px; height:24px} .switch.on::after{left:25px}
+    .desk-grid{grid-template-columns:1fr 1fr}
+    .date-nav input[type=date]{max-width:none}
+    #miniModal{left:0; right:0; bottom:0; top:auto; transform:none; width:100%; max-width:none; border-radius:18px 18px 0 0; max-height:88vh; padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+    #miniModal.show{animation:sheet .2s ease}
+    .plan-el.light{min-width:54px}
+    .dash-head .btn.small{padding:0 10px}
+  }
+  @keyframes sheet{from{transform:translateY(30px); opacity:0}to{transform:none; opacity:1}}
 
   nav.mobile{
     position:fixed; bottom:0; left:0; right:0; z-index:20; display:flex;
@@ -643,7 +665,7 @@ create policy "office_kv_all" on office_kv
       <div class="filters" id="shCloudRooms" style="margin-top:4px"></div>
       <ul class="rows" id="shCloudList"></ul>
       <div class="empty" id="shCloudEmpty" style="display:none">Noch keine Cloud-Geräte geladen – Server + Key eintragen und „Speichern &amp; Geräte laden".</div>
-      <p class="hint">Shelly-App → Einstellungen → „Autorisierungs-Cloud-Key" (Authorization cloud key): dort stehen <b>Server-Adresse</b> und <b>Key</b>. Cloud-Geräte lassen sich von überall schalten – auch auf der Website – und zeigen den echten Zustand (alle 30 s aktualisiert). Der Raumfilter ist auf „Büro" voreingestellt, damit Privat-Geräte draußen bleiben. Der Key wird im Team geteilt. Shelly erlaubt ca. 1 Befehl pro Sekunde.</p>
+      <p class="hint">Shelly-App → Einstellungen → „Autorisierungs-Cloud-Key" (Authorization cloud key): dort stehen <b>Server-Adresse</b> und <b>Key</b>. Cloud-Geräte lassen sich von überall schalten – auch auf der Website – und zeigen den echten Zustand (alle 30 s aktualisiert). Alle Schalter im gewählten Raum (voreingestellt „Büro") werden <b>automatisch</b> als Lampen verknüpft – neue Geräte erscheinen von selbst, Namen folgen der Shelly-App. Der Key wird im Team geteilt. Shelly erlaubt ca. 1 Befehl pro Sekunde.</p>
     </div>
 
     <div class="card">
@@ -2228,6 +2250,22 @@ async function shellyCloudLoad(showToast, withNames){
     const r = await shellyCloudCall({server:cfg.server, authKey:cfg.authKey, op:'list'});
     if(!r.isok){ if(showToast) toast('Shelly-Cloud: '+cloudErr(r)); return; }
     const ds = (r.data && r.data.devices_status) || {};
+    /* Unbekannte Geräte → Namen/Räume nachladen (sonst nur beim manuellen Laden) */
+    if(!withNames && Object.keys(ds).some(id => !(cfg.names||{})[id])){
+      await wait(1100);
+      const rn = await shellyCloudCall({server:cfg.server, authKey:cfg.authKey, op:'names'});
+      if(rn.isok){
+        const names2 = Object.assign({}, cfg.names||{});
+        for(const [id, d] of Object.entries((rn.data && rn.data.devices) || {})) names2[id] = {name:d.name||'', type:d.type||'', room:String(d.room_id||d.room||'')};
+        cfg.names = names2;
+      }
+      if(!cfg.rooms || !Object.keys(cfg.rooms).length){
+        await wait(1100);
+        const rr = await shellyCloudCall({server:cfg.server, authKey:cfg.authKey, op:'rooms'});
+        if(rr.isok){ const rooms = {}; for(const [id, x] of Object.entries((rr.data && rr.data.rooms)||{})) rooms[String(id)] = x.name||('Raum '+id); cfg.rooms = rooms; }
+      }
+      persist();
+    }
     const names = cfg.names || {};
     cloudDevices = Object.entries(ds).map(([id, st])=>{
       const switches = Object.keys(st).filter(k=>/^switch:\d+$/.test(k)).sort();
@@ -2239,7 +2277,27 @@ async function shellyCloudLoad(showToast, withNames){
       return {id, kind, code: base.type || st.code || (st.relays ? 'Gen 1' : ''), name: base.name || '', room: base.room || '',
         chans, chanNames, coverState: covers.length ? st[covers[0]].state : null, updated: (st._updated||'').slice(11,16)};
     });
-    let changed = false;
+    let changed = false, added = 0, renamed = 0;
+    /* Automatisch verknüpfen: alle Schalter/Rollläden im gewählten Raum werden Lampen/Rollläden, Namen folgen der Shelly-App */
+    if(cfg.autoLink !== false){
+      const floorId = state.floors.some(f=>f.id===state.activeFloor) ? state.activeFloor : (state.floors[0]||{}).id;
+      for(const c of cloudDevices){
+        if(cfg.roomFilter && c.room !== cfg.roomFilter) continue;
+        if(c.kind === 'switch'){
+          c.chans.forEach((on, i)=>{
+            const nm = c.chanNames[i] || c.name || c.code || 'Lampe';
+            let d = state.shellys.find(x=>x.mode==='cloud' && x.cloudId===c.id && (x.channel||0)===i);
+            if(!d){ state.shellys.push({id:uid(), name:nm, mode:'cloud', kind:'light', cloudId:c.id, channel:i, lastState:!!on, floor:floorId}); added++; }
+            else if(nm && d.name !== nm){ d.name = nm; renamed++; }
+          });
+        }else if(c.kind === 'cover'){
+          const nm = c.name || c.code || 'Rollladen';
+          let d = state.shellys.find(x=>x.mode==='cloud' && x.cloudId===c.id && x.kind==='cover');
+          if(!d){ state.shellys.push({id:uid(), name:nm, mode:'cloud', kind:'cover', cloudId:c.id, coverState:c.coverState, floor:floorId}); added++; }
+          else if(nm && d.name !== nm){ d.name = nm; renamed++; }
+        }
+      }
+    }
     for(const d of state.shellys){
       if(d.mode !== 'cloud') continue;
       const c = cloudDevices.find(x=>x.id===d.cloudId);
@@ -2247,9 +2305,11 @@ async function shellyCloudLoad(showToast, withNames){
       if(d.kind === 'cover'){ if(c.coverState && c.coverState !== d.coverState){ d.coverState = c.coverState; changed = true; } }
       else{ const on = c.chans[d.channel||0]; if(on !== undefined && on !== d.lastState){ d.lastState = on; changed = true; } }
     }
-    if(changed) persist();
+    if(added || renamed){ save(); changed = true; }
+    else if(changed) persist();
     if(changed || showToast) renderAll();
-    if(showToast) toast(`${cloudDevices.length} Cloud-Gerät${cloudDevices.length!==1?'e':''} geladen. ☁️`);
+    if(added) toast(`${added} neue Lampe${added!==1?'n':''} aus der Shelly-Cloud verknüpft. 💡`);
+    else if(showToast) toast(`${cloudDevices.length} Cloud-Gerät${cloudDevices.length!==1?'e':''} geladen – Büro-Lampen sind automatisch verknüpft.`);
   }catch(e){ if(showToast) toast('Shelly-Cloud nicht erreichbar.'); }
 }
 function openCloudAddModal(c, ch){
@@ -2457,10 +2517,10 @@ function renderSmart(){
         el('div',{class:'row-title'}, d.name),
         el('div',{class:'row-meta'}, d.mode==='cloud' ? el('span',{}, isCover ? 'Cloud · '+(COVER_LABEL[d.coverState]||'') : 'Cloud · Kanal '+((d.channel||0)+1)) : el('span',{}, d.ip), d.mode==='cloud' ? null : el('span',{}, d.gen==='gen1'?'Gen 1':'Gen 2+')),
         isCover ? el('div',{style:'margin-top:6px'}, coverButtons(d)) : null),
-      (()=>{ const fs = el('select',{style:'max-width:150px', title:'Etage im Lageplan'});
+      (()=>{ const fs = el('select',{style:'max-width:120px; min-width:90px', title:'Etage im Lageplan'});
         for(const f of state.floors){ const o = el('option',{value:f.id}, f.name); if(f.id===d.floor) o.selected = true; fs.append(o); }
         fs.addEventListener('change', ()=>{ d.floor = fs.value; save(); renderAll(); toast(`${d.name} liegt jetzt auf „${state.floors.find(f=>f.id===fs.value).name}“.`); });
-        return fs; })(),
+        return state.floors.length > 1 ? fs : null; })(),
       isCover ? null : el('button',{class:'switch'+(d.lastState?' on':''), 'aria-label':`${d.name} schalten`,
         onclick:()=>shellyCmd(d, !d.lastState)}),
       el('button',{class:'icon-btn','aria-label':'Gerät entfernen', onclick:()=>{
