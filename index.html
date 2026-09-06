@@ -89,29 +89,7 @@
   .card h3{font-size:14.5px; font-weight:600; margin-bottom:14px; display:flex; align-items:center; letter-spacing:-.1px}
   .card h3 .ic{width:18px; height:18px; vertical-align:0}
   .hint{font-size:12.5px; color:var(--muted); margin-top:12px; line-height:1.55}
-  @media(max-width:767px){
-    .card{padding:14px; border-radius:14px; margin-bottom:12px}
-    h2{font-size:21px} .sub{margin-bottom:14px}
-    input[type=text],input[type=password],input[type=date],input[type=number],select{font-size:16px; height:44px}
-    .btn{height:44px} .btn.small{height:38px} .chip{height:36px}
-    .form-row > *{min-width:100%}
-    .form-row > .btn,.form-row > .btn.small{min-width:0; width:100%}
-    .stat-grid{grid-template-columns:1fr 1fr; gap:10px}
-    .stat{padding:12px 14px; gap:10px} .stat .ico{width:36px; height:36px} .stat .num{font-size:19px} .stat .lbl{font-size:11.5px}
-    .qa-btn.big{min-width:100%; padding:15px}
-    .status-pill{width:100%; text-align:center}
-    ul.rows li{gap:10px}
-    .row-main{min-width:120px}
-    .icon-btn{width:40px; height:40px; min-width:40px}
-    .switch{width:52px; height:30px; min-width:52px} .switch::after{width:24px; height:24px} .switch.on::after{left:25px}
-    .desk-grid{grid-template-columns:1fr 1fr}
-    .date-nav input[type=date]{max-width:none}
-    #miniModal{left:0; right:0; bottom:0; top:auto; transform:none; width:100%; max-width:none; border-radius:18px 18px 0 0; max-height:88vh; padding-bottom:calc(16px + env(safe-area-inset-bottom))}
-    #miniModal.show{animation:sheet .2s ease}
-    .plan-el.light{min-width:54px}
-    .dash-head .btn.small{padding:0 10px}
-  }
-  @keyframes sheet{from{transform:translateY(30px); opacity:0}to{transform:none; opacity:1}}
+  @media(max-width:767px){ .card{padding:14px; border-radius:14px; margin-bottom:12px} h2{font-size:21px} .sub{margin-bottom:14px} }
 
   nav.mobile{
     position:fixed; bottom:0; left:0; right:0; z-index:20; display:flex;
@@ -311,6 +289,31 @@
   @media(min-width:768px){ #toast{bottom:28px} }
   .confetti-piece{position:fixed; top:-30px; z-index:99; font-size:22px; pointer-events:none; animation:confetti-fall linear forwards}
   @keyframes confetti-fall{to{transform:translateY(112vh) rotate(720deg)}}
+
+  /* ---------- Mobile (zuletzt, damit es die Basis-Regeln überschreibt) ---------- */
+  @media(max-width:767px){
+    .card{padding:14px; border-radius:14px; margin-bottom:12px}
+    h2{font-size:21px} .sub{margin-bottom:14px}
+    input[type=text],input[type=password],input[type=date],input[type=number],select{font-size:16px; height:44px}
+    .btn{height:44px} .btn.small{height:38px} .chip{height:36px}
+    .form-row > *{min-width:100%}
+    .form-row > .btn,.form-row > .btn.small{min-width:0; width:100%}
+    .stat-grid{grid-template-columns:1fr 1fr; gap:10px}
+    .stat{padding:12px 14px; gap:10px} .stat .ico{width:36px; height:36px} .stat .num{font-size:19px} .stat .lbl{font-size:11.5px}
+    .qa-btn.big{min-width:100%; padding:15px}
+    .status-pill{width:100%; text-align:center}
+    ul.rows li{gap:10px}
+    .row-main{min-width:120px}
+    .icon-btn{width:40px; height:40px; min-width:40px}
+    .switch{width:52px; height:30px; min-width:52px} .switch::after{width:24px; height:24px} .switch.on::after{left:25px}
+    .desk-grid{grid-template-columns:1fr 1fr}
+    .date-nav input[type=date]{max-width:none}
+    #miniModal{left:0; right:0; bottom:0; top:auto; transform:none; width:100%; max-width:none; border-radius:18px 18px 0 0; max-height:88vh; padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+    #miniModal.show{animation:sheet .2s ease}
+    .plan-el.light{min-width:46px}
+    .dash-head .btn.small{padding:0 10px}
+  }
+  @keyframes sheet{from{transform:translateY(30px); opacity:0}to{transform:none; opacity:1}}
 </style>
 </head>
 <body>
@@ -634,7 +637,7 @@ create policy "office_kv_all" on office_kv
   <!-- ===== Smart Office ===== -->
   <section class="view" id="view-smart">
     <h2><i class="ic" data-ico="zap"></i>Smart Office</h2>
-    <p class="sub">Licht und Türen direkt aus der App steuern – lokal im Büro-WLAN.</p>
+    <p class="sub">Licht, Rollläden und Türen – über die Cloud von überall oder lokal im Büro-WLAN.</p>
 
     <div class="card">
       <h3><i class="ic" data-ico="lightbulb"></i>Lampen</h3>
