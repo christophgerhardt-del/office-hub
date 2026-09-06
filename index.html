@@ -262,7 +262,32 @@
   .plan-el.desk.taken{background:var(--card); border-color:var(--track); color:var(--muted)}
   .plan-el.light{background:var(--amber-soft); border:1.5px solid var(--amber); color:var(--amber); border-radius:50%; box-shadow:0 0 0 6px rgba(217,119,6,.12), 0 0 32px 10px rgba(251,191,36,.42); z-index:2}
   .plan-el.light:not(.off){background:#fde68a; border-color:#f59e0b; color:#92400e}
-  .plan-el.light{height:auto !important; aspect-ratio:1}
+  .plan-el.light.bar{height:auto; aspect-ratio:auto; border-radius:7px; padding:2px; gap:0; background:var(--card); border:1.5px solid var(--track); color:var(--muted); box-shadow:0 1px 3px rgba(15,23,42,.12); z-index:2}
+  .plan-el.light.bar:not(.off){background:linear-gradient(180deg,#fff7d6 0%,#fde68a 55%,#fcd34d 100%); border-color:#f59e0b; color:#92400e; box-shadow:0 0 0 4px rgba(245,158,11,.14), 0 0 34px 12px rgba(251,191,36,.45), inset 0 0 12px rgba(255,255,255,.7)}
+  .plan-el.light.bar .pe-ico{width:16px; height:16px}
+  .plan-el.light.bar .pe-num{font-size:12px; font-weight:700; line-height:1}
+  .plan-el.light.bar .pe-sub{display:none}
+  .plan-el.light.bar.horiz{flex-direction:row; gap:6px}
+  .plan-el.light.bar.horiz .pe-sub{display:inline; font-size:10px}
+  .floorplan.edit .plan-el.bar .rs-handle{display:block}
+  @media(max-width:767px){ .plan-el.light.bar .pe-ico{width:12px; height:12px} .plan-el.light.bar .pe-num{font-size:10px} }
+
+  /* ---------- Login ---------- */
+  #loginScreen{position:fixed; inset:0; z-index:80; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:20px; overflow:auto}
+  #loginScreen[hidden]{display:none}
+  .login-card{width:100%; max-width:420px; background:var(--card); border:1px solid var(--border); border-radius:20px; box-shadow:var(--shadow-lg); padding:28px 24px; text-align:center}
+  .login-card .logo-mark{width:56px; height:56px; border-radius:16px; margin:0 auto 14px}
+  .login-card .logo-mark .ic{width:30px; height:30px}
+  .login-card h2{justify-content:center; margin-bottom:4px}
+  .login-users{display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px; margin:18px 0 14px}
+  .login-user{border:1.5px solid var(--border-strong); border-radius:14px; padding:14px 8px; display:flex; flex-direction:column; align-items:center; gap:8px; font-weight:600; font-size:14px; color:var(--muted); background:var(--card); transition:all .12s}
+  .login-user .avatar{width:44px; height:44px; border-radius:50%; background:var(--accent-soft); color:var(--accent); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:17px}
+  .login-user.admin .avatar{background:var(--amber-soft); color:var(--amber)}
+  .login-user.sel{border-color:var(--accent); background:var(--accent-soft); color:var(--accent)}
+  .login-card input{text-align:center; font-size:20px !important; letter-spacing:6px; height:48px}
+  .login-card .btn{width:100%; height:46px; margin-top:10px; font-size:15px}
+  .login-card .hint{margin-top:14px}
+  .plan-el.light:not(.bar){height:auto !important; aspect-ratio:1}
   .plan-el.light .pe-ico{width:26px; height:26px}
   .plan-el.light.off{background:var(--card); border-color:var(--track); color:var(--muted); box-shadow:0 1px 4px rgba(15,23,42,.18)}
   .floorplan.hasbg .plan-el.light{border-width:2px}
@@ -367,11 +392,10 @@
       </div>
       <div class="floorplan" id="lightplan"></div>
       <div class="plan-legend">
-        <span><span class="dot" style="background:var(--amber)"></span>Licht an</span>
-        <span><span class="dot" style="background:var(--track)"></span>Licht aus</span>
-        <span><span class="dot" style="background:var(--accent); opacity:.5"></span>Rollladen</span>
+        <span><span class="dot" style="background:#fcd34d"></span>Leiste an</span>
+        <span><span class="dot" style="background:var(--track)"></span>Leiste aus</span>
       </div>
-      <p class="hint" id="lightHint">Klick auf eine Lampe schaltet sie. Mit „Anordnen" ziehst du die Lampen an ihre echte Position, mit „Grundriss" hinterlegst du ein Foto deines Büroplans. Lampen anlegen: Tab „Smart".</p>
+      <p class="hint" id="lightHint">Klick auf eine Lichtleiste schaltet sie. Mit „Anordnen" ziehst du Leisten an ihre Position und änderst an der Ecke unten rechts ihre Größe.</p>
     </div>
 
     <div class="stat-grid">
@@ -399,6 +423,7 @@
       <ul class="rows" id="memberList"></ul>
       <form id="memberForm" class="form-row" style="margin-top:10px">
         <input type="text" id="memberName" class="grow" placeholder="Name des Kollegen / der Kollegin" autocomplete="off">
+        <input type="password" id="memberPin" placeholder="Start-PIN (4–8)" autocomplete="new-password" style="max-width:170px">
         <button class="btn ghost" type="submit">＋ Kollege hinzufügen</button>
       </form>
       <p class="hint" id="teamHint"></p>
@@ -725,6 +750,20 @@ create policy "office_kv_all" on office_kv
 
 <nav class="mobile" id="navMobile"></nav>
 
+<div id="loginScreen" hidden>
+  <div class="login-card">
+    <span class="logo-mark"><i class="ic" data-ico="grid"></i></span>
+    <h2>Anmelden</h2>
+    <p class="sub" id="loginSub">Wähle dein Profil und gib deine PIN ein.</p>
+    <div class="login-users" id="loginUsers"></div>
+    <form id="loginForm">
+      <input type="password" id="loginPin" placeholder="PIN" inputmode="numeric" autocomplete="current-password">
+      <button class="btn" type="submit">Anmelden</button>
+    </form>
+    <p class="err" id="loginErr"></p>
+    <p class="hint">Keine PIN? Der Admin vergibt sie unter Einstellungen → Team.</p>
+  </div>
+</div>
 <div id="toast"><span id="toastMsg"></span><button id="toastUndo" style="display:none">Rückgängig</button></div>
 <div id="modalBack"></div>
 <div id="miniModal" class="card"></div>
@@ -1131,7 +1170,56 @@ function openPinModal(m, onOk){
       el('button',{class:'btn', type:'submit'},'Bestätigen')));
   setTimeout(()=>inp.focus(), 60);
 }
-function openProfileModal(){
+let loginSel = null;
+function showLogin(){
+  const ls = $('#loginScreen');
+  const wrap = $('#loginUsers'); wrap.innerHTML = '';
+  if(!state.members.length){ ls.hidden = true; return; }
+  if(!loginSel || !state.members.some(m=>m.id===loginSel)) loginSel = state.members[0].id;
+  for(const m of state.members){
+    wrap.append(el('button',{type:'button', class:'login-user'+(m.role==='admin'?' admin':'')+(m.id===loginSel?' sel':''), onclick:()=>{ loginSel = m.id; showLogin(); setTimeout(()=>$('#loginPin').focus(), 30); }},
+      el('span',{class:'avatar'}, m.name.slice(0,1).toUpperCase()),
+      el('span',{}, m.name), m.role==='admin' ? el('span',{class:'badge hoch'},'Admin') : null));
+  }
+  $('#loginErr').classList.remove('show');
+  ls.hidden = false;
+}
+$('#loginForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const m = state.members.find(x=>x.id===loginSel); if(!m) return;
+  const pin = $('#loginPin').value;
+  const err = $('#loginErr');
+  if(m.pinHash){
+    if(!pin){ err.textContent = 'Bitte PIN eingeben.'; err.classList.add('show'); return; }
+    if(pinHash(pin, m.id) !== m.pinHash){ err.textContent = 'Falsche PIN.'; err.classList.add('show'); $('#loginPin').value=''; return; }
+  }
+  err.classList.remove('show'); $('#loginPin').value = '';
+  setIdentityMember(m); $('#loginScreen').hidden = true; renderAll();
+  toast(`Willkommen, ${m.name}! ${m.role==='admin' ? '👑' : ''}`);
+  if(!m.pinHash) setTimeout(()=>{ toast('Dein Profil hat noch keine PIN – bitte unter Einstellungen → Team setzen.'); }, 2500);
+});
+function logout(){
+  localStorage.removeItem(IDENTITY_KEY);
+  renderAll(); showLogin();
+}
+function openProfileModal(){ showLogin(); }
+function openPinSetModal(m, title){
+  const p1 = el('input',{type:'password', placeholder:'Neue PIN (4–8 Zeichen)', autocomplete:'new-password'});
+  const p2 = el('input',{type:'password', placeholder:'PIN wiederholen', autocomplete:'new-password'});
+  openModal(
+    modalHead(title || ('🔐 PIN für '+m.name)),
+    el('form',{onsubmit:e=>{
+      e.preventDefault();
+      if(p1.value.length < 4 || p1.value.length > 8){ toast('Die PIN braucht 4–8 Zeichen.'); return; }
+      if(p1.value !== p2.value){ toast('Die PINs stimmen nicht überein.'); return; }
+      m.pinHash = pinHash(p1.value, m.id);
+      save(); closeModal(); renderAll(); toast(`PIN für ${m.name} gespeichert. 🔐`);
+    }},
+      el('div',{class:'form-row', style:'margin-bottom:12px'}, p1, p2),
+      el('button',{class:'btn', type:'submit'},'Speichern')));
+  setTimeout(()=>p1.focus(), 60);
+}
+function openProfileModalLegacy(){
   const wrap = el('div',{});
   for(const m of state.members){
     wrap.append(el('button',{class:'qa-btn', style:'width:100%; margin-bottom:8px; justify-content:flex-start', onclick:()=>{
@@ -1148,8 +1236,9 @@ function openProfileModal(){
     wrap);
 }
 function openPinChangeModal(){
-  if(!isAdmin()){ toast('Nur der Admin kann die PIN ändern.'); return; }
   const m = currentMember();
+  if(!m){ toast('Bitte zuerst anmelden.'); return; }
+  openPinSetModal(m, '🔐 Meine PIN ändern'); return;
   const p1 = el('input',{type:'password', placeholder:'Neue PIN (4–8 Zeichen)', autocomplete:'off'});
   const p2 = el('input',{type:'password', placeholder:'PIN wiederholen', autocomplete:'off'});
   openModal(
@@ -1171,11 +1260,9 @@ function renderTeam(){
   const idLine = $('#teamIdentity'); idLine.innerHTML = '';
   if(me){
     idLine.append(
-      'Angemeldet als ', el('b',{}, me.name), me.role==='admin' ? ' 👑 (Admin) ' : ' ',
-      el('button',{class:'btn ghost small', style:'margin-left:8px', onclick:openProfileModal},'Profil wechseln'));
-    if(me.role==='admin'){
-      idLine.append(' ', el('button',{class:'btn ghost small', onclick:openPinChangeModal},'PIN ändern'));
-    }
+      'Angemeldet als ', el('b',{}, me.name), me.role==='admin' ? ' (Admin) ' : ' ',
+      el('button',{class:'btn ghost small', style:'margin-left:8px', onclick:openPinChangeModal},'Meine PIN ändern'),
+      ' ', el('button',{class:'btn ghost small', onclick:logout},'Abmelden'));
   }else{
     idLine.append(
       'Noch kein Profil gewählt. ',
@@ -1187,6 +1274,10 @@ function renderTeam(){
       el('span',{class:'ic', style:'width:20px;height:20px;color:'+(m.role==='admin'?'var(--amber)':'var(--faint)')}, ico(m.role==='admin' ? 'crown' : 'user').firstChild),
       el('div',{class:'row-main'}, el('div',{class:'row-title'}, m.name)),
       el('span',{class:'badge '+(m.role==='admin'?'hoch':'neutral')}, m.role==='admin' ? 'Admin' : 'Mitglied'));
+    if(isAdmin()){
+      row.append(el('button',{class:'icon-btn blue', 'aria-label':`PIN von ${m.name} setzen`, title:'PIN setzen/zurücksetzen', onclick:()=>openPinSetModal(m)}, ico('pencil')));
+      if(!m.pinHash) row.append(el('span',{class:'badge mittel'},'keine PIN'));
+    }
     if(isAdmin() && m.role!=='admin'){
       row.append(el('button',{class:'icon-btn','aria-label':`${m.name} entfernen`, onclick:()=>{
         const used = state.expenses.some(x=>x.payer===m.name || x.parts.includes(m.name));
@@ -1203,7 +1294,7 @@ function renderTeam(){
   }
   $('#memberForm').style.display = isAdmin() ? '' : 'none';
   $('#teamHint').textContent = isAdmin()
-    ? 'Nur du als Admin kannst Kollegen hinzufügen oder entfernen. Kollegen wählen auf ihrem Gerät einfach ihr Profil.'
+    ? 'Nur du als Admin kannst Kollegen hinzufügen oder entfernen. Jeder meldet sich mit Name + PIN an; über den Stift setzt du eine PIN zurück.'
     : admin ? `Kollegen hinzufügen kann nur der Admin (${admin.name}).` : '';
 }
 $('#memberForm').addEventListener('submit', e=>{
@@ -1212,9 +1303,13 @@ $('#memberForm').addEventListener('submit', e=>{
   const name = $('#memberName').value.trim();
   if(!name){ toast('Bitte einen Namen eingeben.'); return; }
   if(state.members.some(m=>m.name.toLowerCase()===name.toLowerCase())){ toast(`„${name}“ gibt es schon.`); return; }
-  state.members.push({id:uid(), name, role:'member'});
+  const pin = $('#memberPin').value;
+  if(pin.length < 4 || pin.length > 8){ toast('Bitte eine Start-PIN mit 4–8 Zeichen vergeben.'); return; }
+  const nm = {id:uid(), name, role:'member'};
+  nm.pinHash = pinHash(pin, nm.id);
+  state.members.push(nm);
   save(); renderAll();
-  $('#memberName').value = '';
+  $('#memberName').value = ''; $('#memberPin').value = '';
   toast(`„${name}“ zum Team hinzugefügt. 👥`);
 });
 
@@ -2121,8 +2216,8 @@ $('#lightEditBtn').addEventListener('click', ()=>{
   $('#lightEditBtn').innerHTML = lightEdit ? icoHtml('check')+'Fertig' : icoHtml('move')+'Anordnen';
   $('#lightplan').classList.toggle('edit', lightEdit);
   $('#lightHint').textContent = lightEdit
-    ? 'Ziehe die Lampen an ihre echte Position im Büro. Danach „Fertig" drücken.'
-    : 'Klick auf eine Lampe schaltet sie. Mit „Anordnen" ziehst du die Lampen an ihre echte Position, mit „Grundriss" hinterlegst du ein Foto deines Büroplans. Lampen anlegen: Tab „Smart".';
+    ? 'Leisten ziehen, an der blauen Ecke unten rechts in der Größe ändern. Danach „Fertig" drücken.'
+    : 'Klick auf eine Lichtleiste schaltet sie. Mit „Anordnen" ziehst du Leisten an ihre Position und änderst an der Ecke unten rechts ihre Größe.';
 });
 function renderLightPlan(){
   ensurePlanPositions();
@@ -2137,6 +2232,17 @@ function renderLightPlan(){
       ? el('div',{class:'plan-el cover', title:`${d.name} – Klick steuert`},
           el('span',{class:'pe-ico'},'🪟'), el('span',{}, d.name),
           el('span',{class:'pe-sub'}, COVER_LABEL[d.coverState] || ''))
+      : d.shape === 'bar'
+      ? (()=>{
+          const horiz = d.plan && d.plan.w > d.plan.h * (state.floors.find(f=>f.id===state.activeFloor)||{}).bgRatio;
+          const num = (/(\d+)/.exec(d.name||'')||[])[1] || '';
+          const b = el('div',{class:'plan-el light bar'+(horiz?' horiz':'')+(d.lastState?'':' off'), title:`${d.name} – Klick schaltet`},
+            el('span',{class:'pe-ico ic'}, ico('lightbulb').firstChild),
+            el('span',{class:'pe-num'}, horiz ? d.name : num),
+            el('span',{class:'pe-sub'}, d.lastState ? 'an' : 'aus'));
+          b.append(el('div',{class:'rs-handle', onpointerdown:e=>planDragStart(e, d, 'resize')}));
+          return b;
+        })()
       : el('div',{class:'plan-el light'+(d.lastState?'':' off'), title:`${d.name} – Klick schaltet`},
           el('span',{class:'pe-ico ic'}, ico('lightbulb').firstChild), el('span',{}, d.name),
           el('span',{class:'pe-sub'}, d.lastState ? 'an' : 'aus'));
@@ -2176,8 +2282,8 @@ window.addEventListener('pointermove', e=>{
     r.plan.x = Math.min(100 - r.plan.w, Math.max(0, orig.x + dx));
     r.plan.y = Math.min(100 - r.plan.h, Math.max(0, orig.y + dy));
   }else{
-    r.plan.w = Math.min(100 - r.plan.x, Math.max(9, orig.w + dx));
-    r.plan.h = Math.min(100 - r.plan.y, Math.max(12, orig.h + dy));
+    r.plan.w = Math.min(100 - r.plan.x, Math.max(3, orig.w + dx));
+    r.plan.h = Math.min(100 - r.plan.y, Math.max(3, orig.h + dy));
   }
   const elm = planEls[r.id];
   if(elm) positionPlanEl(elm, r.plan);
@@ -2696,7 +2802,7 @@ startSync().then(()=>{
   if(joinedViaLink) toast('Mit deinem Büro verbunden – alle Daten sind da. ✅');
   shellyCloudLoad(false);
   if(!adminMember()) openAdminSetupModal();
-  else if(!currentMember()) openProfileModal();
+  else if(!currentMember()) showLogin();
 });
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   navigator.serviceWorker.register('./sw.js')
