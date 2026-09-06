@@ -246,7 +246,8 @@
   .plan-el.light{background:var(--amber-soft); border:1.5px solid var(--amber); color:var(--amber); border-radius:50%; box-shadow:0 0 0 6px rgba(217,119,6,.10), 0 0 24px rgba(251,191,36,.45)}
   .plan-el.light{height:auto !important; aspect-ratio:1}
   .plan-el.light .pe-ico{width:26px; height:26px}
-  .plan-el.light.off{background:var(--card); border-color:var(--track); color:var(--muted); box-shadow:none}
+  .plan-el.light.off{background:var(--card); border-color:var(--track); color:var(--muted); box-shadow:0 1px 4px rgba(15,23,42,.18)}
+  .floorplan.hasbg .plan-el.light{border-width:2px}
   .plan-el.light.off .pe-ico{filter:grayscale(1); opacity:.5}
   .plan-el.cover{background:var(--accent-soft); border:1.5px dashed var(--accent); color:var(--accent); border-radius:10px}
   .plan-el.cover .pe-ico{font-size:16px}
@@ -670,7 +671,7 @@ create policy "office_kv_all" on office_kv
       <div class="filters" id="shCloudRooms" style="margin-top:4px"></div>
       <ul class="rows" id="shCloudList"></ul>
       <div class="empty" id="shCloudEmpty" style="display:none">Noch keine Cloud-Geräte geladen – Server + Key eintragen und „Speichern &amp; Geräte laden".</div>
-      <p class="hint">Shelly-App → Einstellungen → „Autorisierungs-Cloud-Key" (Authorization cloud key): dort stehen <b>Server-Adresse</b> und <b>Key</b>. Cloud-Geräte lassen sich von überall schalten – auch auf der Website – und zeigen den echten Zustand (alle 30 s aktualisiert). Alle Schalter im gewählten Raum (voreingestellt „Büro") werden <b>automatisch</b> als Lampen verknüpft – neue Geräte erscheinen von selbst, Namen folgen der Shelly-App. Der Key wird im Team geteilt. Shelly erlaubt ca. 1 Befehl pro Sekunde.</p>
+      <p class="hint">Shelly-App → Einstellungen → „Autorisierungs-Cloud-Key" (Authorization cloud key): dort stehen <b>Server-Adresse</b> und <b>Key</b>. Cloud-Geräte lassen sich von überall schalten – auch auf der Website – und zeigen den echten Zustand (alle 30 s aktualisiert). Über „＋ Als Lampe" übernimmst du Geräte aus dem gewählten Raum (voreingestellt „Büro") in den Lichtplan. Der Key wird im Team geteilt. Shelly erlaubt ca. 1 Befehl pro Sekunde.</p>
     </div>
 
     <div class="card">
@@ -1847,7 +1848,8 @@ $('#floorBgFile').addEventListener('change', e=>{
     cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
     try{
       floor.bg = cv.toDataURL('image/jpeg', 0.72);
-      save(); renderRooms(); closeModal();
+      floor.bgRatio = Math.round(cv.width / cv.height * 10000) / 10000;
+      save(); renderAll(); closeModal();
       toast(`Grundriss für „${floor.name}“ hinterlegt. 🗺️`);
     }catch(err){ toast('Bild konnte nicht gespeichert werden.'); }
     URL.revokeObjectURL(img.src);
@@ -2073,12 +2075,14 @@ function applyFloorBg(fp){
   if(floor && floor.bg){
     fp.classList.add('hasbg');
     const overlay = document.documentElement.dataset.theme==='dark'
-      ? 'linear-gradient(rgba(10,18,34,.55), rgba(10,18,34,.55))'
-      : 'linear-gradient(rgba(255,255,255,.5), rgba(255,255,255,.5))';
+      ? 'linear-gradient(rgba(10,18,34,.45), rgba(10,18,34,.45))'
+      : 'linear-gradient(rgba(255,255,255,.18), rgba(255,255,255,.18))';
     fp.style.backgroundImage = `${overlay}, url(${floor.bg})`;
+    fp.style.backgroundSize = '100% 100%';
+    fp.style.aspectRatio = floor.bgRatio ? String(floor.bgRatio) : '';
   }else{
     fp.classList.remove('hasbg');
-    fp.style.backgroundImage = '';
+    fp.style.backgroundImage = ''; fp.style.backgroundSize = ''; fp.style.aspectRatio = '';
   }
 }
 let lightEdit = false;
