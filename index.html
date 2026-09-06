@@ -262,13 +262,28 @@
   .plan-el.desk.taken{background:var(--card); border-color:var(--track); color:var(--muted)}
   .plan-el.light{background:var(--amber-soft); border:1.5px solid var(--amber); color:var(--amber); border-radius:50%; box-shadow:0 0 0 6px rgba(217,119,6,.12), 0 0 32px 10px rgba(251,191,36,.42); z-index:2}
   .plan-el.light:not(.off){background:#fde68a; border-color:#f59e0b; color:#92400e}
-  .plan-el.light.bar{height:auto; aspect-ratio:auto; border-radius:7px; padding:2px; gap:0; background:var(--card); border:1.5px solid var(--track); color:var(--muted); box-shadow:0 1px 3px rgba(15,23,42,.12); z-index:2}
-  .plan-el.light.bar:not(.off){background:linear-gradient(180deg,#fff7d6 0%,#fde68a 55%,#fcd34d 100%); border-color:#f59e0b; color:#92400e; box-shadow:0 0 0 4px rgba(245,158,11,.14), 0 0 34px 12px rgba(251,191,36,.45), inset 0 0 12px rgba(255,255,255,.7)}
-  .plan-el.light.bar .pe-ico{width:16px; height:16px}
+  .plan-el.light.bar{height:auto; aspect-ratio:auto; border-radius:8px; padding:2px; gap:4px; background:#e2e8f0; border:2px solid #94a3b8; color:#334155; box-shadow:0 1px 3px rgba(15,23,42,.15); z-index:2}
+  html[data-theme=dark] .plan-el.light.bar{background:#1e293b; border-color:#475569; color:#cbd5e1}
+  .plan-el.light.bar:not(.off){background:linear-gradient(180deg,#fff3b0 0%,#fcd34d 60%,#f59e0b 100%); border-color:#d97706; color:#78350f; box-shadow:0 0 0 4px rgba(245,158,11,.18), 0 0 30px 10px rgba(251,191,36,.5), inset 0 0 14px rgba(255,255,255,.6)}
+  .plan-el.light.bar .pe-ico{display:none}
+  .plan-el.light.bar .pe-badge{width:26px; height:26px; border-radius:50%; background:#334155; color:#fff; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; flex:none; box-shadow:0 1px 2px rgba(0,0,0,.25)}
+  .plan-el.light.bar:not(.off) .pe-badge{background:#78350f; color:#fff7d6}
   .plan-el.light.bar .pe-num{font-size:12px; font-weight:700; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%}
   .plan-el.light.bar .pe-sub{display:none}
-  .plan-el.light.bar.horiz{flex-direction:row; gap:6px}
-  .plan-el.light.bar.horiz .pe-sub{display:inline; font-size:10px}
+  .plan-el.light.bar.horiz{flex-direction:row; gap:8px; padding:2px 8px}
+  .plan-el.light.bar.horiz .pe-sub{display:inline; font-size:11px; font-weight:600; margin-left:auto}
+  .plan-el.light.bar.narrow .pe-num{display:none}
+  /* Lampen-Kacheln (Schalter-Liste) */
+  .lamp-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px}
+  .lamp-tile{display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:14px; border:1.5px solid var(--border); background:var(--card); text-align:left; transition:all .15s ease; width:100%}
+  .lamp-tile .lt-badge{width:36px; height:36px; border-radius:11px; background:var(--bg); color:var(--muted); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex:none}
+  .lamp-tile .lt-name{font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .lamp-tile .lt-state{font-size:12px; color:var(--muted); font-weight:600}
+  .lamp-tile.on{background:#fffbeb; border-color:#f59e0b}
+  html[data-theme=dark] .lamp-tile.on{background:#3a2a08}
+  .lamp-tile.on .lt-badge{background:#fcd34d; color:#78350f}
+  .lamp-tile.on .lt-state{color:#b45309}
+  .lamp-tile .switch{flex:none}
   .floorplan.edit .plan-el.bar .rs-handle{display:block}
   @media(max-width:767px){ .plan-el.light.bar .pe-ico{width:12px; height:12px} .plan-el.light.bar .pe-num{font-size:10px} }
 
@@ -357,7 +372,17 @@
     #miniModal{left:0; right:0; bottom:0; top:auto; transform:none; width:100%; max-width:none; border-radius:18px 18px 0 0; max-height:88vh; padding-bottom:calc(16px + env(safe-area-inset-bottom))}
     #miniModal.show{animation:sheet .2s ease}
     .plan-el.light:not(.bar){min-width:46px}
-    .plan-el.light.bar{min-width:20px}
+    .plan-el.light.bar{min-width:30px; border-width:1.5px}
+    .plan-el.light.bar .pe-badge{width:22px; height:22px; font-size:12px}
+    .plan-el.light.bar.horiz{padding:2px 6px; gap:6px}
+    .plan-el.light.bar.horiz .pe-sub{font-size:10px}
+    #lightCard{padding:12px 8px}
+    #lightCard .dash-head,#lightCard .plan-legend,#lightCard .hint{padding:0 6px}
+    .lamp-grid{grid-template-columns:1fr 1fr; gap:8px}
+    .lamp-tile{padding:10px 10px; gap:8px; flex-wrap:wrap}
+    .lamp-tile .lt-badge{width:30px; height:30px; font-size:13px}
+    .lamp-tile .lt-name{font-size:13px}
+    .lamp-tile .switch{width:44px; height:26px; min-width:44px} .lamp-tile .switch::after{width:20px; height:20px} .lamp-tile .switch.on::after{left:21px}
     .dash-head .btn.small{padding:0 10px}
   }
   @keyframes sheet{from{transform:translateY(30px); opacity:0}to{transform:none; opacity:1}}
@@ -397,6 +422,11 @@
         <span><span class="dot" style="background:var(--track)"></span>Leiste aus</span>
       </div>
       <p class="hint" id="lightHint">Klick auf eine Lichtleiste schaltet sie. Mit „Anordnen" ziehst du Leisten an ihre Position und änderst an der Ecke unten rechts ihre Größe.</p>
+    </div>
+
+    <div class="card" id="lampListCard">
+      <h3><i class="ic" data-ico="zap"></i>Lampen schalten</h3>
+      <div class="lamp-grid" id="lampGrid"></div>
     </div>
 
     <div class="stat-grid">
@@ -1374,6 +1404,21 @@ function renderHome(){
     }
   }
   renderLightPlan();
+  /* Kachel-Liste */
+  const grid = $('#lampGrid'); grid.innerHTML = '';
+  const tiles = state.shellys.filter(d=>d.kind!=='cover').sort((a,b)=>{
+    const na = parseInt((/(\d+)/.exec(a.name)||[])[1]||'999',10), nb = parseInt((/(\d+)/.exec(b.name)||[])[1]||'999',10);
+    return na - nb || a.name.localeCompare(b.name);
+  });
+  $('#lampListCard').style.display = tiles.length ? '' : 'none';
+  for(const d of tiles){
+    const num = (/(\d+)/.exec(d.name||'')||[])[1] || '•';
+    grid.append(el('button',{class:'lamp-tile'+(d.lastState?' on':''), onclick:()=>shellyCmd(d, !d.lastState)},
+      el('span',{class:'lt-badge'}, num),
+      el('span',{class:'lt-name'}, d.name),
+      el('span',{class:'lt-state'}, d.lastState ? 'an' : 'aus'),
+      el('span',{class:'switch'+(d.lastState?' on':''), 'aria-hidden':'true'})));
+  }
 }
 function renderSettings(){ renderTeam(); }
 async function allLights(on){
@@ -2213,9 +2258,10 @@ function renderLightPlan(){
       ? (()=>{
           const horiz = d.plan && d.plan.w > d.plan.h * (state.floors.find(f=>f.id===state.activeFloor)||{}).bgRatio;
           const num = (/(\d+)/.exec(d.name||'')||[])[1] || '';
-          const b = el('div',{class:'plan-el light bar'+(horiz?' horiz':'')+(d.lastState?'':' off'), title:`${d.name} – Klick schaltet`},
-            el('span',{class:'pe-ico ic'}, ico('lightbulb').firstChild),
-            el('span',{class:'pe-num'}, horiz ? d.name : num),
+          const narrow = !horiz && d.plan && d.plan.w < 7;
+          const b = el('div',{class:'plan-el light bar'+(horiz?' horiz':'')+(narrow?' narrow':'')+(d.lastState?'':' off'), title:`${d.name} – Klick schaltet`},
+            el('span',{class:'pe-badge'}, num || '•'),
+            el('span',{class:'pe-num'}, horiz ? d.name : ''),
             el('span',{class:'pe-sub'}, d.lastState ? 'an' : 'aus'));
           b.append(el('div',{class:'rs-handle', onpointerdown:e=>planDragStart(e, d, 'resize')}));
           return b;
