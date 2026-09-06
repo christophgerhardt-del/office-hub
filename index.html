@@ -235,7 +235,9 @@
   .fp-zone{fill:var(--accent-soft); opacity:.55}
   .fp-zone.wc{fill:var(--bg); opacity:1}
   .fp-desk{fill:var(--accent-soft); stroke:var(--accent); stroke-width:.45; opacity:.9}
-  .fp-chair{fill:var(--track)}
+  .fp-desk.lit{fill:#fde68a; stroke:#f59e0b; opacity:1}
+  .fp-zone.lit{fill:#fef3c7; opacity:1}
+  .fp-desk,.fp-zone{transition:fill .3s ease}
   .fp-wall,.fp-outer{fill:none; stroke:var(--ink); stroke-width:2.5px; stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke}
   .fp-wall{stroke-width:2px}
   .fp-desk{vector-effect:non-scaling-stroke; stroke-width:1.2px}
@@ -2143,6 +2145,14 @@ function renderLightPlan(){
     positionPlanEl(elm, d.plan);
     planEls[d.id] = elm;
     fp.append(elm);
+  }
+  const svg = fp.querySelector('svg.fp-svg');
+  if(svg){
+    for(const d of state.shellys){
+      if(d.floor !== state.activeFloor || d.kind==='cover') continue;
+      const m = /(\d+)/.exec(d.name||''); if(!m) continue;
+      svg.querySelectorAll(`[data-n="${m[1]}"]`).forEach(x=>x.classList.toggle('lit', !!d.lastState));
+    }
   }
   if(!count){
     fp.append(el('div',{class:'empty', style:'position:absolute; inset:0; display:flex; align-items:center; justify-content:center'},
