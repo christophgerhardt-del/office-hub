@@ -121,6 +121,25 @@
   .qa-btn.big.on:hover{background:var(--accent-hover)}
   .qa-btn.big.off{background:var(--card); border-color:var(--border-strong); color:var(--ink)}
   .qa-btn .ic{width:20px; height:20px; vertical-align:0}
+  .dash-grid{display:grid; grid-template-columns:1fr; gap:16px}
+  @media(min-width:1024px){ .dash-grid{grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr); align-items:start} .dash-side .stat-grid{grid-template-columns:1fr 1fr} }
+  .plan-foot{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:12px}
+  .plan-foot .plan-legend{margin-top:0}
+  .plan-foot .status-pill{padding:5px 10px; font-size:11.5px}
+  .dot-pulse{background:#f59e0b; animation:pulse 1.1s ease-in-out infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.55)} 50%{box-shadow:0 0 0 5px rgba(245,158,11,0)}}
+  #lightAll{margin-bottom:12px}
+  #lightplan{margin:0 auto}
+  .light-spill{position:absolute; border-radius:50%; pointer-events:none; z-index:1; background:radial-gradient(closest-side, rgba(251,191,36,.42), rgba(251,191,36,.18) 55%, transparent 100%); filter:blur(6px); opacity:0; transform:scale(.6); transition:opacity .45s ease, transform .45s ease}
+  .light-spill.on{opacity:1; transform:scale(1)}
+  html[data-theme=dark] .light-spill{background:radial-gradient(closest-side, rgba(251,191,36,.35), rgba(251,191,36,.12) 55%, transparent 100%)}
+  .plan-el.light.bar{transition:background .35s ease, border-color .35s ease, box-shadow .35s ease, color .35s ease, transform .12s ease}
+  .plan-el.light.bar:active{transform:scale(.97)}
+  .plan-el.pending .pe-badge{animation:pulse 1.1s ease-in-out infinite}
+  .lamp-tile{transition:background .3s ease, border-color .3s ease}
+  .lamp-tile:active{transform:scale(.98)}
+  .lamp-tile.pending .lt-badge{animation:pulse 1.1s ease-in-out infinite}
+  .lamp-tile.pending .switch{opacity:.6}
   .dash-head{display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap}
   .dash-head h3{margin:0; flex:1}
   .status-pill{font-size:12.5px; font-weight:600; color:var(--muted); padding:8px 12px; border-radius:99px; background:var(--bg); border:1px solid var(--border)}
@@ -364,7 +383,8 @@
     .form-row > .btn,.form-row > .btn.small{min-width:0; width:100%}
     .stat-grid{grid-template-columns:1fr 1fr; gap:10px}
     .stat{padding:12px 14px; gap:10px} .stat .ico{width:36px; height:36px} .stat .num{font-size:19px} .stat .lbl{font-size:11.5px}
-    .qa-btn.big{min-width:100%; padding:15px}
+    .qa-btn.big{min-width:calc(50% - 5px); padding:13px 8px; font-size:14px}
+    .status-pill{flex:1 1 100%; text-align:center}
     .status-pill{width:100%; text-align:center}
     ul.rows li{gap:10px}
     .row-main{min-width:120px}
@@ -408,42 +428,46 @@
     <h2 id="homeGreeting">Start</h2>
     <p class="sub" id="homeSub">Dein Büro auf einen Blick.</p>
 
-    <div class="card">
-      <div class="qa-row" id="lightAll"></div>
-      <div class="qa-row" id="quickActions" style="margin-top:8px"></div>
-    </div>
-
-    <div class="card" id="lightCard">
-      <div class="dash-head">
-        <h3><i class="ic" data-ico="lightbulb"></i>Lichtplan</h3>
-        <div class="filters" id="lightFloorChips" style="margin:0"></div>
-        <button class="btn ghost small" id="lightBgBtn"><i class="ic" data-ico="image"></i>Grundriss</button>
-        <button class="btn ghost small" id="lightEditBtn"><i class="ic" data-ico="move"></i>Anordnen</button>
+    <div class="dash-grid">
+      <div class="dash-main">
+        <div class="card" id="lightCard">
+          <div class="dash-head">
+            <h3><i class="ic" data-ico="lightbulb"></i>Lichtplan</h3>
+            <div class="filters" id="lightFloorChips" style="margin:0"></div>
+            <button class="btn ghost small" id="lightBgBtn"><i class="ic" data-ico="image"></i>Grundriss</button>
+            <button class="btn ghost small" id="lightEditBtn"><i class="ic" data-ico="move"></i>Anordnen</button>
+          </div>
+          <div class="qa-row" id="lightAll"></div>
+          <div class="floorplan" id="lightplan"></div>
+          <div class="plan-foot">
+            <div class="plan-legend">
+              <span><span class="dot" style="background:#fcd34d"></span>an</span>
+              <span><span class="dot" style="background:var(--track)"></span>aus</span>
+              <span><span class="dot dot-pulse"></span>wird geschaltet</span>
+            </div>
+            <span class="status-pill" id="cloudStatus"></span>
+          </div>
+          <p class="hint" id="lightHint">Tippe auf eine Leiste, um sie zu schalten. „Anordnen" verschiebt Leisten und ändert ihre Größe an der Ecke unten rechts.</p>
+        </div>
       </div>
-      <div class="floorplan" id="lightplan"></div>
-      <div class="plan-legend">
-        <span><span class="dot" style="background:#fcd34d"></span>Leiste an</span>
-        <span><span class="dot" style="background:var(--track)"></span>Leiste aus</span>
+      <div class="dash-side">
+        <div class="card" id="lampListCard">
+          <h3><i class="ic" data-ico="zap"></i>Lampen schalten</h3>
+          <div class="lamp-grid" id="lampGrid"></div>
+          <div class="qa-row" id="quickActions" style="margin-top:10px"></div>
+        </div>
+        <div class="stat-grid">
+          <button class="stat" data-goto="tasks"><span class="ico"><i class="ic" data-ico="check-square"></i></span><div style="min-width:0"><div class="num" id="statTasks">0</div><div class="lbl">Offene Aufgaben</div></div></button>
+          <button class="stat" data-goto="rooms"><span class="ico"><i class="ic" data-ico="calendar"></i></span><div style="min-width:0"><div class="num" id="statRooms">0</div><div class="lbl">Buchungen heute</div></div></button>
+          <button class="stat" data-goto="shopping"><span class="ico"><i class="ic" data-ico="cart"></i></span><div style="min-width:0"><div class="num" id="statShopping">0</div><div class="lbl">Offene Einkäufe</div></div></button>
+          <button class="stat" data-goto="money"><span class="ico"><i class="ic" data-ico="euro"></i></span><div style="min-width:0"><div class="num" id="statMoney">0,00 €</div><div class="lbl">Offener Ausgleich</div></div></button>
+        </div>
+        <div class="card" id="homeNextCard">
+          <h3><i class="ic" data-ico="clock"></i>Als Nächstes fällig</h3>
+          <ul class="rows" id="homeNextList"></ul>
+          <div class="empty" id="homeNextEmpty" style="display:none"><span class="big"><i class="ic" data-ico="check"></i></span>Keine offenen Aufgaben – alles erledigt.</div>
+        </div>
       </div>
-      <p class="hint" id="lightHint">Klick auf eine Lichtleiste schaltet sie. Mit „Anordnen" ziehst du Leisten an ihre Position und änderst an der Ecke unten rechts ihre Größe.</p>
-    </div>
-
-    <div class="card" id="lampListCard">
-      <h3><i class="ic" data-ico="zap"></i>Lampen schalten</h3>
-      <div class="lamp-grid" id="lampGrid"></div>
-    </div>
-
-    <div class="stat-grid">
-      <button class="stat" data-goto="tasks"><span class="ico"><i class="ic" data-ico="check-square"></i></span><div style="min-width:0"><div class="num" id="statTasks">0</div><div class="lbl">Offene Aufgaben</div></div></button>
-      <button class="stat" data-goto="rooms"><span class="ico"><i class="ic" data-ico="calendar"></i></span><div style="min-width:0"><div class="num" id="statRooms">0</div><div class="lbl">Buchungen heute</div></div></button>
-      <button class="stat" data-goto="shopping"><span class="ico"><i class="ic" data-ico="cart"></i></span><div style="min-width:0"><div class="num" id="statShopping">0</div><div class="lbl">Offene Einkäufe</div></div></button>
-      <button class="stat" data-goto="money"><span class="ico"><i class="ic" data-ico="euro"></i></span><div style="min-width:0"><div class="num" id="statMoney">0,00 €</div><div class="lbl">Offener Ausgleich</div></div></button>
-    </div>
-
-    <div class="card" id="homeNextCard">
-      <h3><i class="ic" data-ico="clock"></i>Als Nächstes fällig</h3>
-      <ul class="rows" id="homeNextList"></ul>
-      <div class="empty" id="homeNextEmpty" style="display:none"><span class="big"><i class="ic" data-ico="check"></i></span>Keine offenen Aufgaben – alles erledigt.</div>
     </div>
   </section>
 
@@ -1064,6 +1088,7 @@ const SYNC_DEFAULTS = {
   url: 'https://nocsjyzmnskbyccrjayx.supabase.co',
   key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vY3NqeXptbnNrYnljY3JqYXl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDI4ODgsImV4cCI6MjA5NzI3ODg4OH0.RnIq-jbr6JKz_Z3etwc2rX1O6RXh5cidwm9mkRFrnw4'
 };
+window.addEventListener('resize', ()=>{ if(current==='home') renderLightPlan(); });
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && syncReady()) syncPull(); });
 
 
@@ -1285,8 +1310,8 @@ function renderHome(){
   const la = $('#lightAll'); la.innerHTML = '';
   const anyOn = lights.some(d=>d.lastState);
   la.append(
-    el('button',{class:'qa-btn big on', onclick:()=>allLights(true)}, ico('lightbulb'), 'Alle Lichter an'),
-    el('button',{class:'qa-btn big off', onclick:()=>allLights(false)}, ico('power'), 'Alle Lichter aus'));
+    el('button',{class:'qa-btn big on', onclick:()=>allLights(true)}, ico('lightbulb'), 'Alle an'),
+    el('button',{class:'qa-btn big off', onclick:()=>allLights(false)}, ico('power'), 'Alle aus'));
   const qa = $('#quickActions'); qa.innerHTML = '';
   for(const d of state.shellys){
     if(d.kind==='cover') qa.append(el('button',{class:'qa-btn', onclick:()=>openCoverModal(d)},'🪟 ', d.name));
@@ -1311,6 +1336,7 @@ function renderHome(){
     }
   }
   renderLightPlan();
+  renderCloudStatus();
   /* Kachel-Liste */
   const grid = $('#lampGrid'); grid.innerHTML = '';
   const tiles = state.shellys.filter(d=>d.kind!=='cover').sort((a,b)=>{
@@ -1320,12 +1346,18 @@ function renderHome(){
   $('#lampListCard').style.display = tiles.length ? '' : 'none';
   for(const d of tiles){
     const num = (/(\d+)/.exec(d.name||'')||[])[1] || '•';
-    grid.append(el('button',{class:'lamp-tile'+(d.lastState?' on':''), onclick:()=>shellyCmd(d, !d.lastState)},
+    grid.append(el('button',{class:'lamp-tile'+(d.lastState?' on':'')+(pendingIds.has(d.id)?' pending':''), onclick:()=>{ if(!pendingIds.has(d.id)) shellyCmd(d, !d.lastState); }},
       el('span',{class:'lt-badge'}, num),
       el('span',{class:'lt-name'}, d.name),
       el('span',{class:'lt-state'}, d.lastState ? 'an' : 'aus'),
       el('span',{class:'switch'+(d.lastState?' on':''), 'aria-hidden':'true'})));
   }
+}
+function renderCloudStatus(){
+  const p = $('#cloudStatus'); if(!p) return;
+  const cfg = state.shellyCloud;
+  if(!cfg.server || !cfg.authKey){ p.textContent = 'Shelly Cloud nicht verbunden'; return; }
+  p.textContent = lastCloudSync ? 'Cloud · Stand '+lastCloudSync.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : 'Cloud · verbinde…';
 }
 function renderSettings(){ renderTeam(); }
 async function allLights(on){
@@ -2107,6 +2139,7 @@ function renderPlan(){
 }
 function applyFloorBg(fp){
   const floor = state.floors.find(f=>f.id===state.activeFloor);
+  fp.dataset.bgKey = floor ? (floor.id+':'+(floor.vector?floor.vector.length:0)+':'+(floor.bg?floor.bg.length:0)) : '';
   fp.querySelectorAll('svg.fp-svg').forEach(x=>x.remove());
   if(floor && floor.vector){
     fp.classList.add('hasbg','vector');
@@ -2143,38 +2176,51 @@ $('#lightEditBtn').addEventListener('click', ()=>{
 });
 function renderLightPlan(){
   ensurePlanPositions();
-  const fp = $('#lightplan'); fp.innerHTML = '';
-  applyFloorBg(fp);
+  const fp = $('#lightplan');
+  const floor = state.floors.find(f=>f.id===state.activeFloor);
+  const bgKey = floor ? (floor.id+':'+(floor.vector?floor.vector.length:0)+':'+(floor.bg?floor.bg.length:0)) : '';
+  if(fp.dataset.floor !== state.activeFloor || fp.dataset.bgKey !== bgKey){ fp.innerHTML = ''; applyFloorBg(fp); fp.dataset.floor = state.activeFloor; }
+  if(window.innerWidth >= 1024 && floor && floor.bgRatio){ fp.style.maxWidth = Math.round(window.innerHeight*0.72*floor.bgRatio)+'px'; } else fp.style.maxWidth = '';
+  const keep = new Set();
   let count = 0;
   for(const d of state.shellys){
     if(d.floor !== state.activeFloor) continue;
-    count++;
+    count++; keep.add(d.id);
     const isCover = d.kind === 'cover';
-    const elm = isCover
-      ? el('div',{class:'plan-el cover', title:`${d.name} – Klick steuert`},
-          el('span',{class:'pe-ico'},'🪟'), el('span',{}, d.name),
-          el('span',{class:'pe-sub'}, COVER_LABEL[d.coverState] || ''))
-      : d.shape === 'bar'
-      ? (()=>{
-          const horiz = d.plan && d.plan.w > d.plan.h * (state.floors.find(f=>f.id===state.activeFloor)||{}).bgRatio;
-          const num = (/(\d+)/.exec(d.name||'')||[])[1] || '';
-          const narrow = d.plan && (horiz ? d.plan.w < 26 : d.plan.w < 7);
-          const b = el('div',{class:'plan-el light bar'+(horiz?' horiz':'')+(narrow?' narrow':'')+(d.lastState?'':' off'), title:`${d.name} – Klick schaltet`},
-            el('span',{class:'pe-badge'}, num || '•'),
-            el('span',{class:'pe-num'}, horiz ? d.name : ''),
-            el('span',{class:'pe-sub'}, d.lastState ? 'an' : 'aus'));
-          b.append(el('div',{class:'rs-handle', onpointerdown:e=>planDragStart(e, d, 'resize')}));
-          return b;
-        })()
-      : el('div',{class:'plan-el light'+(d.lastState?'':' off'), title:`${d.name} – Klick schaltet`},
-          el('span',{class:'pe-ico ic'}, ico('lightbulb').firstChild), el('span',{}, d.name),
-          el('span',{class:'pe-sub'}, d.lastState ? 'an' : 'aus'));
-    elm.addEventListener('pointerdown', e=>planDragStart(e, d, 'move'));
-    elm.addEventListener('click', ()=>{ if(lightEdit) return; if(isCover) openCoverModal(d); else shellyCmd(d, !d.lastState); });
+    const horiz = d.plan && d.plan.w > d.plan.h * ((floor||{}).bgRatio||0.8);
+    const narrow = d.plan && (horiz ? d.plan.w < 26 : d.plan.w < 7);
+    const num = (/(\d+)/.exec(d.name||'')||[])[1] || '';
+    let elm = fp.querySelector(`.plan-el[data-id="${d.id}"]`);
+    if(!elm){
+      elm = isCover
+        ? el('div',{class:'plan-el cover', 'data-id':d.id}, el('span',{class:'pe-ico'},'🪟'), el('span',{class:'pe-name'}, d.name), el('span',{class:'pe-sub'},''))
+        : d.shape === 'bar'
+          ? el('div',{class:'plan-el light bar', 'data-id':d.id}, el('span',{class:'pe-badge'}, num || '•'), el('span',{class:'pe-num'}, ''), el('span',{class:'pe-sub'}, ''), el('div',{class:'rs-handle', onpointerdown:e=>planDragStart(e, d, 'resize')}))
+          : el('div',{class:'plan-el light', 'data-id':d.id}, el('span',{class:'pe-ico ic'}, ico('lightbulb').firstChild), el('span',{class:'pe-name'}, d.name), el('span',{class:'pe-sub'}, ''));
+      elm.addEventListener('pointerdown', e=>planDragStart(e, d, 'move'));
+      elm.addEventListener('click', ()=>{ if(lightEdit) return; if(isCover) openCoverModal(d); else if(!pendingIds.has(d.id)) shellyCmd(d, !d.lastState); });
+      fp.append(elm);
+      if(!isCover) fp.append(el('div',{class:'light-spill', 'data-spill':d.id}));
+    }
+    elm.title = isCover ? `${d.name} – Klick steuert` : `${d.name} – Klick schaltet`;
+    elm.classList.toggle('horiz', !!horiz); elm.classList.toggle('narrow', !!narrow);
+    elm.classList.toggle('off', !isCover && !d.lastState);
+    elm.classList.toggle('pending', pendingIds.has(d.id));
+    const sub = elm.querySelector('.pe-sub'); if(sub) sub.textContent = isCover ? (COVER_LABEL[d.coverState]||'') : (d.lastState ? 'an' : 'aus');
+    const nm = elm.querySelector('.pe-num'); if(nm) nm.textContent = horiz ? d.name : '';
+    const nmn = elm.querySelector('.pe-name'); if(nmn) nmn.textContent = d.name;
     positionPlanEl(elm, d.plan);
     planEls[d.id] = elm;
-    fp.append(elm);
+    const sp = fp.querySelector(`.light-spill[data-spill="${d.id}"]`);
+    if(sp){
+      const p = d.plan; const ratio = (floor||{}).bgRatio||0.8;
+      const ex = Math.max(p.w*1.7, 16), ey = Math.max(p.h*1.7, 16/ratio*0.8);
+      sp.style.left = (p.x + p.w/2 - ex/2)+'%'; sp.style.top = (p.y + p.h/2 - ey/2)+'%';
+      sp.style.width = ex+'%'; sp.style.height = ey+'%';
+      sp.classList.toggle('on', !!d.lastState);
+    }
   }
+  fp.querySelectorAll('.plan-el, .light-spill').forEach(e=>{ const id = e.dataset.id || e.dataset.spill; if(id && !keep.has(id)) e.remove(); });
   const svg = fp.querySelector('svg.fp-svg');
   if(svg){
     for(const d of state.shellys){
@@ -2183,10 +2229,11 @@ function renderLightPlan(){
       svg.querySelectorAll(`[data-n="${m[1]}"]`).forEach(x=>x.classList.toggle('lit', !!d.lastState));
     }
   }
+  let empty = fp.querySelector('.plan-empty');
   if(!count){
-    fp.append(el('div',{class:'empty', style:'position:absolute; inset:0; display:flex; align-items:center; justify-content:center'},
-      state.shellys.length ? 'Auf dieser Etage liegen keine Lampen.' : 'Noch keine Lampen – lege sie im Tab „Smart" an (lokal per IP oder über die Shelly-Cloud).'));
-  }
+    if(!empty){ empty = el('div',{class:'empty plan-empty', style:'position:absolute; inset:0; display:flex; align-items:center; justify-content:center'}); fp.append(empty); }
+    empty.textContent = state.shellys.length ? 'Auf dieser Etage liegen keine Lampen.' : 'Noch keine Lampen – lege sie im Tab „Smart" an.';
+  }else if(empty) empty.remove();
 }
 let dragCtx = null;
 function planDragStart(e, r, mode){
@@ -2217,7 +2264,7 @@ window.addEventListener('pointerup', ()=>{
   p.x = Math.round(p.x*2)/2; p.y = Math.round(p.y*2)/2;
   p.w = Math.round(p.w*2)/2; p.h = Math.round(p.h*2)/2;
   dragCtx = null;
-  save();
+  save(); renderAll();
 });
 
 /* ---------- Mini-Modal ---------- */
@@ -2290,7 +2337,8 @@ function openRoomModal(room){
 
 /* ================= Smart Office ================= */
 const SHELLY_PROXY = 'https://nocsjyzmnskbyccrjayx.supabase.co/functions/v1/shelly-proxy';
-let cloudDevices = [];
+let cloudDevices = [], lastCloudSync = null;
+const pendingIds = new Set();
 const wait = ms => new Promise(r=>setTimeout(r, ms));
 /* Shelly-Cloud erlaubt ~1 Anfrage/Sekunde pro Konto → alle Aufrufe laufen durch eine Warteschlange */
 let shellyQueue = Promise.resolve(), shellyLastCall = 0;
@@ -2399,7 +2447,8 @@ async function shellyCloudLoad(showToast, withNames){
     }
     if(added || renamed){ save(); changed = true; }
     else if(changed) persist();
-    if(changed || showToast) renderAll();
+    lastCloudSync = new Date();
+    if(changed || showToast) renderAll(); else renderCloudStatus();
     if(added) toast(`${added} neue Lampe${added!==1?'n':''} aus der Shelly-Cloud verknüpft. 💡`);
     else if(showToast) toast(`${cloudDevices.length} Cloud-Gerät${cloudDevices.length!==1?'e':''} geladen – Büro-Lampen sind automatisch verknüpft.`);
   }catch(e){ if(showToast) toast('Shelly-Cloud nicht erreichbar.'); }
@@ -2502,13 +2551,14 @@ async function shellyCmd(d, turnOn, quiet){
   if(d.mode === 'cloud'){
     const cfg = state.shellyCloud;
     if(!cfg.server || !cfg.authKey){ toast('Shelly-Cloud ist nicht konfiguriert (Smart → Shelly Cloud).'); return; }
-    d.lastState = turnOn; save(); renderAll();
+    d.lastState = turnOn; pendingIds.add(d.id); save(); renderAll();
     try{
       const r = await shellyCloudCall({server:cfg.server, authKey:cfg.authKey, op:'control', id:d.cloudId, channel:d.channel||0, turn: turnOn?'on':'off'});
-      if(r.isok){ if(!quiet) toast(`💡 ${d.name} ${turnOn?'eingeschaltet':'ausgeschaltet'} (Cloud). ✅`); }
-      else toast('Shelly-Cloud: '+cloudErr(r));
+      if(r.isok){ if(!quiet) toast(`${d.name} ${turnOn?'eingeschaltet':'ausgeschaltet'}.`); }
+      else { toast('Shelly-Cloud: '+cloudErr(r)); d.lastState = !turnOn; persist(); }
       if(!quiet) scheduleCloudRefresh();
     }catch(e){ toast('Shelly-Cloud nicht erreichbar – Internetverbindung prüfen.'); }
+    finally{ pendingIds.delete(d.id); renderAll(); }
     return;
   }
   d.lastState = turnOn; save(); renderAll();
