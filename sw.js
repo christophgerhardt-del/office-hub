@@ -1,11 +1,9 @@
-/* OfficeHub Service Worker – Netzwerk zuerst, Cache als Offline-Fallback */
-const VERSION = 'officehub-v2';
+/* OfficeHub Service Worker – Netzwerk zuerst (ohne HTTP-Cache), Cache nur als Offline-Fallback */
+const VERSION = 'officehub-v3';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(VERSION).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())
-  );
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
@@ -19,15 +17,13 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  const fresh = new Request(e.request.url, { cache: 'no-cache', credentials: 'same-origin' });
   e.respondWith(
-    fetch(e.request)
+    fetch(fresh)
       .then(res => {
-        const copy = res.clone();
-        caches.open(VERSION).then(c => c.put(e.request, copy));
+        if (res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(e.request, copy)); }
         return res;
       })
-      .catch(() =>
-        caches.match(e.request).then(r => r || caches.match('./index.html'))
-      )
+      .catch(() => caches.match(e.request).then(r => r || caches.match('./index.html')))
   );
 });

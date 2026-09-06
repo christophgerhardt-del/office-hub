@@ -1399,17 +1399,13 @@ function renderSettings(){ renderTeam(); }
 async function allLights(on){
   const lights = state.shellys.filter(d=>d.kind!=='cover');
   if(!lights.length){ toast('Noch keine Lampen angelegt – Tab „Smart".'); return; }
-  toast(on ? '💡 Schalte alle Lichter ein…' : '🌙 Schalte alle Lichter aus…');
-  let first = true;
-  for(const d of lights){
-    if(d.mode==='cloud'){
-      if(!first) await wait(1100);
-      await shellyCmd(d, on, true);
-      first = false;
-    }else shellyCmd(d, on, true);
-  }
-  toast(on ? `💡 ${lights.length} Lichter eingeschaltet.` : `🌙 ${lights.length} Lichter ausgeschaltet.`);
+  toast(on ? `💡 Schalte ${lights.length} Lichter ein – dauert ca. ${lights.length} Sekunden…` : `🌙 Schalte ${lights.length} Lichter aus – dauert ca. ${lights.length} Sekunden…`);
+  await Promise.all(lights.map(d => shellyCmd(d, on, true)));   /* Warteschlange hält den Abstand ein */
+  toast(on ? `💡 Alle ${lights.length} Lichter eingeschaltet.` : `🌙 Alle ${lights.length} Lichter ausgeschaltet.`);
+  scheduleCloudRefresh();
 }
+let cloudRefreshTimer = null;
+function scheduleCloudRefresh(){ clearTimeout(cloudRefreshTimer); cloudRefreshTimer = setTimeout(()=>shellyCloudLoad(false), 2500); }
 $('#settingsBtn').addEventListener('click', ()=>go('settings'));
 $('#lightBgBtn').addEventListener('click', openFloorsModal);
 
@@ -2369,13 +2365,29 @@ function openRoomModal(room){
 /* ================= Smart Office ================= */
 const SHELLY_PROXY = 'https://nocsjyzmnskbyccrjayx.supabase.co/functions/v1/shelly-proxy';
 let cloudDevices = [];
-async function shellyCloudCall(body){
-  const res = await fetch(SHELLY_PROXY, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
-  return res.json();
+const wait = ms => new Promise(r=>setTimeout(r, ms));
+/* Shelly-Cloud erlaubt ~1 Anfrage/Sekunde pro Konto → alle Aufrufe laufen durch eine Warteschlange */
+let shellyQueue = Promise.resolve(), shellyLastCall = 0;
+function shellyCloudCall(body){
+  const run = async ()=>{
+    const gap = 1150 - (Date.now() - shellyLastCall);
+    if(gap > 0) await wait(gap);
+    for(let attempt = 0; attempt < 3; attempt++){
+      shellyLastCall = Date.now();
+      const res = await fetch(SHELLY_PROXY, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+      const r = await res.json();
+      const msg = JSON.stringify(r.errors || r.error || '').toLowerCase();
+      if(r.isok || !/limit|too many|429/.test(msg)) return r;
+      await wait(1500 + attempt*1000);   /* Limit erreicht → kurz warten, erneut versuchen */
+    }
+    return {isok:false, error:'Shelly-Cloud ist gerade ausgelastet – bitte gleich nochmal.'};
+  };
+  const p = shellyQueue.then(run, run);
+  shellyQueue = p.catch(()=>{});
+  return p;
 }
 const cloudErr = r => (r && r.errors && Object.values(r.errors)[0]) || (r && r.error) || 'Fehler';
 const COVER_LABEL = {open:'offen', closed:'geschlossen', stopped:'gestoppt', opening:'öffnet…', closing:'schließt…', calibrating:'kalibriert…'};
-const wait = ms => new Promise(r=>setTimeout(r, ms));
 async function shellyCloudLoad(showToast, withNames){
   const cfg = state.shellyCloud;
   if(!cfg.server || !cfg.authKey) return;
@@ -2537,7 +2549,7 @@ async function coverCmd(d, direction){
   try{
     const r = await shellyCloudCall({server:cfg.server, authKey:cfg.authKey, op:'cover', id:d.cloudId, direction});
     if(r.isok) toast(`🪟 ${d.name} ${label}.`); else toast('Shelly-Cloud: '+cloudErr(r));
-    setTimeout(()=>shellyCloudLoad(false), 2500);
+    scheduleCloudRefresh();
   }catch(e){ toast('Shelly-Cloud nicht erreichbar.'); }
 }
 function coverButtons(d){
@@ -2558,7 +2570,7 @@ $('#shCloudSave').addEventListener('click', ()=>{
   toast('Lade Geräte aus der Shelly-Cloud…');
   shellyCloudLoad(true, true);
 });
-setInterval(()=>{ if(document.visibilityState==='visible') shellyCloudLoad(false); }, 30000);
+setInterval(()=>{ if(document.visibilityState==='visible' && Date.now() - shellyLastCall > 5000) shellyCloudLoad(false); }, 45000);
 async function shellyCmd(d, turnOn, quiet){
   if(d.mode === 'cloud'){
     const cfg = state.shellyCloud;
@@ -2568,7 +2580,7 @@ async function shellyCmd(d, turnOn, quiet){
       const r = await shellyCloudCall({server:cfg.server, authKey:cfg.authKey, op:'control', id:d.cloudId, channel:d.channel||0, turn: turnOn?'on':'off'});
       if(r.isok){ if(!quiet) toast(`💡 ${d.name} ${turnOn?'eingeschaltet':'ausgeschaltet'} (Cloud). ✅`); }
       else toast('Shelly-Cloud: '+cloudErr(r));
-      setTimeout(()=>shellyCloudLoad(false), 2000);
+      if(!quiet) scheduleCloudRefresh();
     }catch(e){ toast('Shelly-Cloud nicht erreichbar – Internetverbindung prüfen.'); }
     return;
   }
@@ -2806,8 +2818,10 @@ startSync().then(()=>{
   else if(!currentMember()) showLogin();
 });
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
-  navigator.serviceWorker.register('./sw.js')
-    .then(()=>console.log('[OfficeHub] Service Worker registriert – App ist offlinefähig & installierbar'))
+  let hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{ if(hadController) location.reload(); hadController = true; });
+  navigator.serviceWorker.register('./sw.js', {updateViaCache:'none'})
+    .then(reg=>{ console.log('[OfficeHub] Service Worker registriert'); reg.update().catch(()=>{}); setInterval(()=>reg.update().catch(()=>{}), 10*60*1000); })
     .catch(err=>console.warn('[OfficeHub] Service Worker nicht registriert:', err));
 }
 </script>
