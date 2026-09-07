@@ -38,12 +38,12 @@ Die veröffentlichte Website läuft über HTTPS – Browser erlauben von dort ke
 
 Wird die App dagegen **per HTTP aus dem Büro-Netz** geladen, schaltet sie Lampen **direkt per IP** (sofort, parallel, ohne Limit) und weicht nur auf die Cloud aus, wenn ein Gerät lokal nicht erreichbar ist. Die IPs lernt die App automatisch aus der Shelly-Cloud.
 
-Einrichtung auf einem Rechner, der im Büro-WLAN dauerhaft läuft (Mac, NAS, Raspberry Pi):
+Im Büro läuft OfficeHub auf dem Mac mini: **http://mac-mini-von-presio.local:8742** (Autostart + stündliche Updates, eingerichtet über `install-macmini.sh`). Einrichtung auf einem anderen Rechner im Büro-WLAN:
 
 ```bash
 git clone https://github.com/christophgerhardt-del/office-hub.git
 cd office-hub && sh start-local.sh
-# → im Büro: http://<IP-des-Rechners>:8741  (Login wie gewohnt)
+# → im Büro: http://<IP-des-Rechners>:8742  (Login wie gewohnt)
 ```
 
 Von unterwegs weiterhin die Website nutzen. Beide Varianten teilen dieselben Daten (Supabase).
