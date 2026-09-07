@@ -4,6 +4,16 @@
 import { createClient } from '@supabase/supabase-js';
 import fs from 'node:fs';
 import os from 'node:os';
+import { execFile } from 'node:child_process';
+/* Shelly-Aufrufe über Apples curl: launchd-gestartete Drittprogramme (node) dürfen unter macOS
+   ohne GUI-Freigabe nicht ins lokale Netz, Apples eigene Werkzeuge schon. */
+function curlText(url, timeoutSec = 2) {
+  return new Promise((resolve, reject) => {
+    execFile('/usr/bin/curl', ['-s', '-S', '-m', String(timeoutSec), url], { timeout: (timeoutSec + 1) * 1000 }, (err, stdout, stderr) => {
+      if (err) reject(new Error((stderr || err.message || '').trim() || 'curl fehlgeschlagen')); else resolve(stdout);
+    });
+  });
+}
 
 const cfg = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url), 'utf8'));
 const OFFICE = cfg.office;
@@ -20,16 +30,15 @@ async function loadLamps() {
   if (error) { log('Lampen laden:', error.message); return; }
   lamps = (data?.value || []).filter(d => d.ip && d.kind !== 'cover');
 }
-const withTimeout = (ms) => AbortSignal.timeout(ms);
 async function shellySet(d, on) {
   const ch = d.channel || 0;
   const url = d.gen === 'gen1' ? `http://${d.ip}/relay/${ch}?turn=${on ? 'on' : 'off'}` : `http://${d.ip}/rpc/Switch.Set?id=${ch}&on=${on}`;
-  try { const r = await fetch(url, { signal: withTimeout(2500) }); return r.ok; } catch (e) { log('Schalten fehlgeschlagen', d.name, d.ip, e.message); return false; }
+  try { await curlText(url, 2.5); return true; } catch (e) { log('Schalten fehlgeschlagen', d.name, d.ip, e.message); return false; }
 }
 async function shellyGet(d) {
   const ch = d.channel || 0;
   const url = d.gen === 'gen1' ? `http://${d.ip}/relay/${ch}` : `http://${d.ip}/rpc/Switch.GetStatus?id=${ch}`;
-  try { const j = await (await fetch(url, { signal: withTimeout(1500) })).json(); return d.gen === 'gen1' ? !!j.ison : !!j.output; } catch (e) { return null; }
+  try { const j = JSON.parse(await curlText(url, 1.5)); return d.gen === 'gen1' ? !!j.ison : !!j.output; } catch (e) { return null; }
 }
 let lastStates = {}, lastWrite = 0, lastBeat = 0;
 async function upsert(key, value) {
