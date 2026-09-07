@@ -779,7 +779,7 @@
       <button class="btn" type="submit">Anmelden</button>
     </form>
     <p class="err" id="loginErr"></p>
-    <p class="hint">PIN vergessen? Christoph kann sie zurücksetzen lassen.</p>
+    <p class="hint">Erste Anmeldung: Start-PIN 000000 – danach legst du deine eigene PIN fest. PIN vergessen? Christoph kann sie zurücksetzen lassen.</p>
   </div>
 </div>
 <div id="toast"><span id="toastMsg"></span><button id="toastUndo" style="display:none">Rückgängig</button></div>
@@ -974,9 +974,17 @@ async function ensureSession(){
   }
   return refreshing;
 }
+async function mustChangePin(){
+  const sess = await ensureSession(); if(!sess) return false;
+  try{
+    const r = await authRequest('user', null, sess.access_token);
+    return !!(r.ok && r.data && r.data.user_metadata && r.data.user_metadata.mustChangePin);
+  }catch(e){ return false; }
+}
 async function changeOwnPin(newPin){
   const sess = await ensureSession(); if(!sess) return {ok:false, msg:'Nicht angemeldet.'};
-  const res = await fetch(SYNC_DEFAULTS.url+'/auth/v1/user', {method:'PUT', headers:{apikey:SYNC_DEFAULTS.key, Authorization:'Bearer '+sess.access_token, 'Content-Type':'application/json'}, body: JSON.stringify({password:newPin})});
+  if(newPin === '000000') return {ok:false, msg:'Bitte eine eigene PIN wählen – nicht die Start-PIN.'};
+  const res = await fetch(SYNC_DEFAULTS.url+'/auth/v1/user', {method:'PUT', headers:{apikey:SYNC_DEFAULTS.key, Authorization:'Bearer '+sess.access_token, 'Content-Type':'application/json'}, body: JSON.stringify({password:newPin, data:{mustChangePin:false}})});
   if(res.ok) return {ok:true};
   let d={}; try{ d=await res.json(); }catch(e){}
   return {ok:false, msg: d.msg || d.error_description || 'PIN konnte nicht geändert werden.'};
@@ -1191,13 +1199,37 @@ $('#loginForm').addEventListener('submit', async e=>{
   await startSync();
   renderAll();
   if(!hubOnline()) shellyCloudLoad(false);
-  toast(`Willkommen, ${u.name}!`);
+  if(await mustChangePin()){ forcedPin = true; openForcedPinModal(); } else toast(`Willkommen, ${u.name}!`);
 });
 function logout(){
   setSession(null);
   localStorage.removeItem('officehub.identity');
   clearInterval(pullTimer);
   renderAll(); showLogin();
+}
+function openForcedPinModal(){
+  const p1 = el('input',{type:'password', placeholder:'Neue PIN (6–12 Zeichen)', autocomplete:'new-password', inputmode:'numeric'});
+  const p2 = el('input',{type:'password', placeholder:'PIN wiederholen', autocomplete:'new-password', inputmode:'numeric'});
+  const err = el('p',{class:'err'});
+  openModal(
+    el('h3',{}, '🔐 Neue PIN festlegen'),
+    el('p',{class:'sub', style:'margin-bottom:12px'}, 'Dein Zugang hat noch die Start-PIN. Bitte lege jetzt deine eigene PIN fest (mindestens 6 Zeichen) – erst danach geht es weiter.'),
+    el('form',{onsubmit:async e=>{
+      e.preventDefault();
+      const show = m => { err.textContent = m; err.classList.add('show'); };
+      if(p1.value.length < 6 || p1.value.length > 12){ show('Die PIN braucht 6–12 Zeichen.'); return; }
+      if(p1.value !== p2.value){ show('Die PINs stimmen nicht überein.'); return; }
+      const r = await changeOwnPin(p1.value);
+      if(!r.ok){ show(r.msg); return; }
+      forcedPin = false; closeModal(); toast('Deine PIN ist gesetzt. Willkommen! 🔐');
+    }},
+      el('div',{class:'form-row', style:'margin-bottom:8px'}, p1, p2), err,
+      el('button',{class:'btn', type:'submit', style:'margin-top:10px'},'PIN speichern')));
+  setTimeout(()=>p1.focus(), 60);
+}
+let forcedPin = false;
+async function enforcePinChange(){
+  if(await mustChangePin()){ forcedPin = true; openForcedPinModal(); }
 }
 function openPinSetModal(m, title){
   const p1 = el('input',{type:'password', placeholder:'Neue PIN (mind. 6 Zeichen)', autocomplete:'new-password'});
@@ -2302,8 +2334,8 @@ function closeModal(){
   $('#miniModal').classList.remove('show');
   $('#modalBack').classList.remove('show');
 }
-$('#modalBack').addEventListener('click', closeModal);
-window.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+$('#modalBack').addEventListener('click', ()=>{ if(!forcedPin) closeModal(); });
+window.addEventListener('keydown', e=>{ if(e.key==='Escape' && !forcedPin) closeModal(); });
 function modalHead(txt){
   return el('h3',{}, txt, el('button',{class:'close-x', onclick:closeModal, 'aria-label':'Schließen'},'✕'));
 }
@@ -2887,7 +2919,7 @@ go('home');
 if(!getSession()){
   showLogin();
 }else{
-  startSync().then(()=>{ if(!hubOnline()) shellyCloudLoad(false); if(!currentMember()) logout(); });
+  startSync().then(()=>{ if(!hubOnline()) shellyCloudLoad(false); if(!currentMember()) logout(); else enforcePinChange(); });
 }
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   let hadController = !!navigator.serviceWorker.controller;
