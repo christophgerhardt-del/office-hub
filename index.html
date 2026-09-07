@@ -2400,9 +2400,9 @@ async function hubCommand(cmd){
 }
 /* Wartet auf das Ergebnis des Hubs: 'ok' | 'failed' | 'timeout' */
 async function awaitHubResult(id, maxMs = 6000){
-  const t0 = Date.now();
+  const t0 = Date.now(); let step = 250;
   while(Date.now() - t0 < maxMs){
-    await wait(450);
+    await wait(step); step = 400;
     try{
       const res = await fetch(syncBase()+'/rest/v1/hub_commands?id=eq.'+id+'&select=done_at,result', {headers: syncHeaders()});
       const rows = res.ok ? await res.json() : [];
