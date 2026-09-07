@@ -17,8 +17,9 @@ fi
 cat > "$DIR/serve.sh" <<'EOF'
 #!/bin/sh
 cd "$HOME/office-hub"
-# Alle 60 Minuten aktualisieren (im Hintergrund), Server im Vordergrund
-( while true; do sleep 3600; git pull -q --ff-only >/dev/null 2>&1 || true; done ) &
+# Büro-Netz melden (damit die Website im Büro automatisch hierher wechselt); Secret liegt in .office-secret
+report(){ S=$(cat .office-secret 2>/dev/null); [ -n "$S" ] || return 0; LAN=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null); curl -s -m 10 "https://nocsjyzmnskbyccrjayx.supabase.co/functions/v1/office-ip?report=$S&lan=${LAN}:8742" >/dev/null 2>&1; }
+( n=0; while true; do report; n=$((n+1)); [ $((n % 12)) -eq 0 ] && git pull -q --ff-only >/dev/null 2>&1; sleep 300; done ) &
 exec /usr/bin/python3 -m http.server 8742 --bind 0.0.0.0
 EOF
 chmod +x "$DIR/serve.sh"

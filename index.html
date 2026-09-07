@@ -482,6 +482,7 @@
       <ul class="rows" id="memberList"></ul>
       <p class="hint" id="teamHint"></p>
       <p class="hint" id="syncStatus" style="margin-top:6px"></p>
+      <p class="hint" id="originHint"></p>
     </div>
 
     <div class="card">
@@ -1360,7 +1361,13 @@ function renderCloudStatus(){
   const mode = localMode() ? 'Lokal im Büro-WLAN' : 'Cloud';
   p.textContent = mode + (lastCloudSync ? ' · Stand '+lastCloudSync.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : ' · verbinde…');
 }
-function renderSettings(){ renderTeam(); }
+function renderSettings(){
+  renderTeam();
+  const oh = $('#originHint');
+  if(oh) oh.textContent = location.protocol === 'https:'
+    ? 'Du nutzt die Website (Lampen über die Cloud). Im Büro wechselt sie automatisch zur lokalen Version auf dem Mac mini; manuell: http://mac-mini-von-presio.local:8742'
+    : 'Du nutzt die lokale Version im Büro-Netz (Lampen direkt per IP). Von unterwegs: https://christophgerhardt-del.github.io/office-hub/';
+}
 async function allLights(on){
   const lights = state.shellys.filter(d=>d.kind!=='cover');
   if(!lights.length){ toast('Noch keine Lampen angelegt – Tab „Smart".'); return; }
@@ -2802,10 +2809,28 @@ applyTheme(theme);
 $('#expDate').value = todayISO();
 initSyncHashes();
 hydrateIcons();
+/* Büro-Erkennung: Kommt der Aufruf der Website aus dem Büro-Netz, gibt es dort eine lokale Version
+   (Mac mini, schaltet Shellys direkt). Dann automatisch dorthin – außer mit ?stay=1. */
+const OFFICE_IP_FN = SYNC_DEFAULTS.url + '/functions/v1/office-ip';
+async function officeRedirectCheck(){
+  if(location.protocol !== 'https:') return;
+  if(new URLSearchParams(location.search).get('stay')) { sessionStorage.setItem('officehub.stay','1'); return; }
+  if(sessionStorage.getItem('officehub.stay')) return;
+  try{
+    const ctrl = new AbortController(); const t = setTimeout(()=>ctrl.abort(), 4000);
+    const r = await (await fetch(OFFICE_IP_FN, {signal:ctrl.signal})).json(); clearTimeout(t);
+    if(!r.inOffice || !r.lanUrl) return;
+    const lan = r.lanUrl.replace(/\/$/,'') + '/index.html';
+    /* Prüfen, ob die lokale Version wirklich erreichbar ist (Bild-Ping umgeht die Mixed-Content-Sperre nicht bei fetch, aber Navigation ist erlaubt) */
+    toast('Du bist im Büro – wechsle zur lokalen Steuerung…');
+    setTimeout(()=>{ location.href = lan; }, 900);
+  }catch(e){}
+}
 /* Fest an das Büro gekoppelt – alte Link-Parameter werden ignoriert */
 state.sync = {url: SYNC_DEFAULTS.url, key: SYNC_DEFAULTS.key, office: OFFICE_ID, enabled: true};
-if(location.search) history.replaceState(null, '', location.pathname);
+if(location.search && !/stay=/.test(location.search)) history.replaceState(null, '', location.pathname);
 go('home');
+officeRedirectCheck();
 if(!getSession()){
   showLogin();
 }else{
