@@ -1058,6 +1058,8 @@ async function syncPull(){
     const rows = await res.json();
     let changed = false;
     for(const row of rows){
+      if(row.key==='lampStates'){ hubStates = row.value; continue; }
+      if(row.key==='hubStatus'){ hubStatus = row.value; continue; }
       if(!SYNC_KEYS.includes(row.key)) continue;
       const rh = hashStr(JSON.stringify(row.value));
       if(rh === collHash(row.key)) continue;
@@ -1068,7 +1070,8 @@ async function syncPull(){
         applyRemote(row.key, row.value); changed = true;
       }
     }
-    if(changed) renderAll();
+    const hubChanged = applyHubStates();
+    if(changed || hubChanged) renderAll(); else renderCloudStatus();
     setSyncStatus('synchron · '+new Date().toLocaleTimeString('de-DE'), true);
   }catch(e){
     setSyncStatus('keine Verbindung', false);
@@ -1191,7 +1194,7 @@ $('#loginForm').addEventListener('submit', async e=>{
   $('#loginScreen').hidden = true;
   await startSync();
   renderAll();
-  shellyCloudLoad(false);
+  if(!hubOnline()) shellyCloudLoad(false);
   toast(`Willkommen, ${u.name}!`);
 });
 function logout(){
@@ -1358,19 +1361,36 @@ function renderCloudStatus(){
   const p = $('#cloudStatus'); if(!p) return;
   const cfg = state.shellyCloud;
   if(!cfg.server || !cfg.authKey){ p.textContent = 'Shelly Cloud nicht verbunden'; return; }
+  if(hubOnline()){
+    const t = hubStates && hubStates.updated ? new Date(hubStates.updated).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : '';
+    p.textContent = 'Büro-Hub live' + (t ? ' · Stand '+t : ''); return;
+  }
   const mode = localMode() ? 'Lokal im Büro-WLAN' : 'Cloud';
   p.textContent = mode + (lastCloudSync ? ' · Stand '+lastCloudSync.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : ' · verbinde…');
 }
 function renderSettings(){
   renderTeam();
   const oh = $('#originHint');
-  if(oh) oh.textContent = location.protocol === 'https:'
-    ? 'Du nutzt die Website (Lampen über die Cloud). Im Büro wechselt sie automatisch zur lokalen Version auf dem Mac mini; manuell: http://mac-mini-von-presio.local:8742'
-    : 'Du nutzt die lokale Version im Büro-Netz (Lampen direkt per IP). Von unterwegs: https://christophgerhardt-del.github.io/office-hub/';
+  if(oh) oh.textContent = hubOnline()
+    ? 'Büro-Hub (Mac mini) ist online: Lampen werden direkt im Büro-Netz geschaltet – egal, von wo du zugreifst.'
+    : 'Büro-Hub (Mac mini) ist gerade nicht erreichbar – Lampen laufen über die Shelly-Cloud.';
 }
 async function allLights(on){
   const lights = state.shellys.filter(d=>d.kind!=='cover');
   if(!lights.length){ toast('Noch keine Lampen angelegt – Tab „Smart".'); return; }
+  if(hubOnline()){
+    for(const d of lights) { d.lastState = on; pendingIds.add(d.id); }
+    persist(); renderAll();
+    let outcome = 'error';
+    try{ const id = await hubCommand({type:'all', on}); outcome = await awaitHubResult(id, 8000); }catch(e){}
+    for(const d of lights) pendingIds.delete(d.id);
+    if(outcome === 'ok'){
+      await fetchHubRows(); renderAll();
+      toast(on ? `Alle ${lights.length} Lichter eingeschaltet.` : `Alle ${lights.length} Lichter ausgeschaltet.`);
+      return;
+    }
+    toast('Büro-Hub konnte nicht schalten – nehme die Cloud…');
+  }
   const viaLocal = localMode() && lights.every(d=>d.ip);
   toast(on ? (viaLocal ? 'Schalte alle Lichter ein…' : `Schalte ${lights.length} Lichter ein – über die Cloud ca. ${lights.length} Sekunden…`) : (viaLocal ? 'Schalte alle Lichter aus…' : `Schalte ${lights.length} Lichter aus – über die Cloud ca. ${lights.length} Sekunden…`));
   await Promise.all(lights.map(d => shellyCmd(d, on, true)));   /* lokal parallel & sofort, Cloud über die Warteschlange */
@@ -2348,6 +2368,50 @@ function openRoomModal(room){
 const SHELLY_PROXY = 'https://nocsjyzmnskbyccrjayx.supabase.co/functions/v1/shelly-proxy';
 let cloudDevices = [], lastCloudSync = null;
 const pendingIds = new Set();
+/* Hub (Mac mini im Büro): führt Befehle lokal aus, meldet echte Zustände */
+let hubStatus = null, hubStates = null;
+function hubOnline(){ return !!(hubStatus && hubStatus.online && Date.now() - Date.parse(hubStatus.updated) < 90000); }
+function applyHubStates(){
+  if(!hubStates || !hubStates.states) return false;
+  if(Date.now() - Date.parse(hubStates.updated) > 120000) return false;
+  let changed = false;
+  for(const d of state.shellys){
+    if(d.kind==='cover' || pendingIds.has(d.id)) continue;
+    const v = hubStates.states[d.id];
+    if(typeof v === 'boolean' && v !== d.lastState){ d.lastState = v; changed = true; }
+  }
+  if(changed) persist();
+  return changed;
+}
+async function fetchHubRows(){
+  if(!await syncAuth()) return false;
+  try{
+    const res = await fetch(syncBase()+'/rest/v1/office_kv?office_id=eq.'+OFFICE_ID+'&key=in.(lampStates,hubStatus)&select=key,value', {headers: syncHeaders()});
+    if(!res.ok) return false;
+    for(const row of await res.json()){ if(row.key==='lampStates') hubStates = row.value; if(row.key==='hubStatus') hubStatus = row.value; }
+    return applyHubStates();
+  }catch(e){ return false; }
+}
+async function hubCommand(cmd){
+  if(!await syncAuth()) throw new Error('nicht angemeldet');
+  const res = await fetch(syncBase()+'/rest/v1/hub_commands?select=id', {method:'POST', headers:{...syncHeaders(), Prefer:'return=representation'}, body: JSON.stringify({office_id: OFFICE_ID, cmd})});
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const rows = await res.json(); return rows[0] && rows[0].id;
+}
+/* Wartet auf das Ergebnis des Hubs: 'ok' | 'failed' | 'timeout' */
+async function awaitHubResult(id, maxMs = 6000){
+  const t0 = Date.now();
+  while(Date.now() - t0 < maxMs){
+    await wait(450);
+    try{
+      const res = await fetch(syncBase()+'/rest/v1/hub_commands?id=eq.'+id+'&select=done_at,result', {headers: syncHeaders()});
+      const rows = res.ok ? await res.json() : [];
+      const r = rows[0];
+      if(r && r.done_at){ return (r.result && r.result.ok) ? 'ok' : 'failed'; }
+    }catch(e){}
+  }
+  return 'timeout';
+}
 const wait = ms => new Promise(r=>setTimeout(r, ms));
 /* Shelly-Cloud erlaubt ~1 Anfrage/Sekunde pro Konto → alle Aufrufe laufen durch eine Warteschlange */
 let shellyQueue = Promise.resolve(), shellyLastCall = 0;
@@ -2557,7 +2621,7 @@ $('#shCloudSave').addEventListener('click', ()=>{
   toast('Lade Geräte aus der Shelly-Cloud…');
   shellyCloudLoad(true, true);
 });
-setInterval(()=>{ if(document.visibilityState==='visible' && Date.now() - shellyLastCall > 5000) shellyCloudLoad(false); }, 45000);
+setInterval(()=>{ if(document.visibilityState==='visible' && !hubOnline() && Date.now() - shellyLastCall > 5000) shellyCloudLoad(false); }, 45000);
 /* Lokal vs. Cloud: Direktzugriff per IP nur möglich, wenn die App selbst per http:// aus dem Büro-Netz geladen wurde
    (Browser blockieren http-Aufrufe aus https-Seiten). Schlägt lokal fehl, pausiert der Versuch 60 s und die Cloud übernimmt. */
 let localFailedAt = 0, localLastOk = 0;
@@ -2576,6 +2640,17 @@ async function shellyCmd(d, turnOn, quiet){
     const cfg = state.shellyCloud;
     if(!cfg.server || !cfg.authKey){ toast('Shelly-Cloud ist nicht konfiguriert (Smart → Shelly Cloud).'); return; }
     d.lastState = turnOn; pendingIds.add(d.id); save(); renderAll();
+    if(hubOnline()){
+      let outcome = 'error';
+      try{ const id = await hubCommand({type:'switch', id:d.id, on:turnOn}); outcome = await awaitHubResult(id); }catch(e){}
+      if(outcome === 'ok'){
+        pendingIds.delete(d.id); d.lastState = turnOn; persist(); renderAll();
+        if(!quiet) toast(`${d.name} ${turnOn?'eingeschaltet':'ausgeschaltet'}.`);
+        fetchHubRows().then(()=>renderAll());
+        return;
+      }
+      if(!quiet) toast('Büro-Hub konnte nicht schalten – nehme die Cloud…');
+    }
     if(canLocal() && d.ip){
       const ok = await shellyLocalSet(d, turnOn);
       if(ok){
@@ -2809,32 +2884,14 @@ applyTheme(theme);
 $('#expDate').value = todayISO();
 initSyncHashes();
 hydrateIcons();
-/* Büro-Erkennung: Kommt der Aufruf der Website aus dem Büro-Netz, gibt es dort eine lokale Version
-   (Mac mini, schaltet Shellys direkt). Dann automatisch dorthin – außer mit ?stay=1. */
-const OFFICE_IP_FN = SYNC_DEFAULTS.url + '/functions/v1/office-ip';
-async function officeRedirectCheck(){
-  if(location.protocol !== 'https:') return;
-  if(new URLSearchParams(location.search).get('stay')) { sessionStorage.setItem('officehub.stay','1'); return; }
-  if(sessionStorage.getItem('officehub.stay')) return;
-  try{
-    const ctrl = new AbortController(); const t = setTimeout(()=>ctrl.abort(), 4000);
-    const r = await (await fetch(OFFICE_IP_FN, {signal:ctrl.signal})).json(); clearTimeout(t);
-    if(!r.inOffice || !r.lanUrl) return;
-    const lan = r.lanUrl.replace(/\/$/,'') + '/index.html';
-    /* Prüfen, ob die lokale Version wirklich erreichbar ist (Bild-Ping umgeht die Mixed-Content-Sperre nicht bei fetch, aber Navigation ist erlaubt) */
-    toast('Du bist im Büro – wechsle zur lokalen Steuerung…');
-    setTimeout(()=>{ location.href = lan; }, 900);
-  }catch(e){}
-}
 /* Fest an das Büro gekoppelt – alte Link-Parameter werden ignoriert */
 state.sync = {url: SYNC_DEFAULTS.url, key: SYNC_DEFAULTS.key, office: OFFICE_ID, enabled: true};
 if(location.search && !/stay=/.test(location.search)) history.replaceState(null, '', location.pathname);
 go('home');
-officeRedirectCheck();
 if(!getSession()){
   showLogin();
 }else{
-  startSync().then(()=>{ shellyCloudLoad(false); if(!currentMember()) logout(); });
+  startSync().then(()=>{ if(!hubOnline()) shellyCloudLoad(false); if(!currentMember()) logout(); });
 }
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   let hadController = !!navigator.serviceWorker.controller;
